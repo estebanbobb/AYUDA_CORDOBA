@@ -791,13 +791,26 @@ function aprobarAlbergue(id) {
     
     const data = sheet.getDataRange().getValues();
     
+    // LOG: Ver qué ID estamos buscando
+    Logger.log('🔍 Buscando albergue con ID: ' + id + ' (tipo: ' + typeof id + ')');
+    
     for (let i = 1; i < data.length; i++) {
+      // LOG: Ver todos los IDs en la hoja
+      Logger.log('Fila ' + i + ': ID = ' + data[i][0] + ' (tipo: ' + typeof data[i][0] + ')');
+      
       if (data[i][0] === id) {
+        Logger.log('✅ ENCONTRADO! Actualizando fila ' + (i + 1) + ', columna 11');
         sheet.getRange(i + 1, 11).setValue('activo');
+        
+        // Verificar que se guardó
+        const valorGuardado = sheet.getRange(i + 1, 11).getValue();
+        Logger.log('Valor guardado: ' + valorGuardado);
+        
         return { success: true, message: 'Albergue aprobado' };
       }
     }
     
+    Logger.log('❌ NO ENCONTRADO - ID no coincide con ninguna fila');
     return { success: false, error: 'Albergue no encontrado' };
   } catch (error) {
     Logger.log('Error en aprobarAlbergue: ' + error);
