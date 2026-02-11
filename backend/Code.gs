@@ -346,7 +346,7 @@ function getOfertasPendientes() {
 }
 
 /**
- * Obtiene todos los albergues
+ * Obtiene todos los albergues APROBADOS (para mapa público)
  */
 function getAlbergues() {
   try {
@@ -364,6 +364,11 @@ function getAlbergues() {
     for (let i = 1; i < data.length; i++) {
       if (!data[i][0]) continue; // Saltar filas vacías
       
+      const estadoAprobacion = data[i][10] || 'pendiente_aprobacion';
+      
+      // Solo mostrar albergues aprobados en el mapa público
+      if (estadoAprobacion !== 'activo') continue;
+      
       albergues.push({
         id: data[i][0],
         nombre: data[i][1],
@@ -374,7 +379,8 @@ function getAlbergues() {
         ocupacionActual: data[i][6],
         recursos: data[i][7],
         contacto: data[i][8],
-        estado: data[i][9] || 'activo'
+        estado: data[i][9] || 'activo',
+        estadoAprobacion: estadoAprobacion
       });
     }
     
@@ -780,7 +786,7 @@ function rechazarOferta(id) {
 /**
  * Aprueba un albergue
  */
-function aprobarAlbergue(id) {
+function aprobarAlbergue(data) {
   try {
     const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('Albergues');
@@ -789,22 +795,31 @@ function aprobarAlbergue(id) {
       return { success: false, error: 'Hoja no encontrada' };
     }
     
-    const data = sheet.getDataRange().getValues();
+    // El ID puede venir en data.id o directamente como parámetro
+    const id = data.id || data;
+    
+    const sheetData = sheet.getDataRange().getValues();
     
     // LOG: Ver qué ID estamos buscando
     Logger.log('🔍 Buscando albergue con ID: ' + id + ' (tipo: ' + typeof id + ')');
     
-    for (let i = 1; i < data.length; i++) {
-      // LOG: Ver todos los IDs en la hoja
-      Logger.log('Fila ' + i + ': ID = ' + data[i][0] + ' (tipo: ' + typeof data[i][0] + ')');
+    for (let i = 1; i < sheetData.length; i++) {
+      // Convertir ambos a string para comparar
+      const sheetId = String(sheetData[i][0]);
+      const searchId = String(id);
       
-      if (data[i][0] === id) {
+      // LOG: Ver todos los IDs en la hoja
+      Logger.log('Fila ' + i + ': ID = ' + sheetId + ' vs ' + searchId);
+      
+      if (sheetId === searchId) {
         Logger.log('✅ ENCONTRADO! Actualizando fila ' + (i + 1) + ', columna 11');
+        
+        // Actualizar columna K (11) = EstadoAprobacion
         sheet.getRange(i + 1, 11).setValue('activo');
         
         // Verificar que se guardó
         const valorGuardado = sheet.getRange(i + 1, 11).getValue();
-        Logger.log('Valor guardado: ' + valorGuardado);
+        Logger.log('✅ Valor guardado: ' + valorGuardado);
         
         return { success: true, message: 'Albergue aprobado' };
       }
@@ -813,7 +828,7 @@ function aprobarAlbergue(id) {
     Logger.log('❌ NO ENCONTRADO - ID no coincide con ninguna fila');
     return { success: false, error: 'Albergue no encontrado' };
   } catch (error) {
-    Logger.log('Error en aprobarAlbergue: ' + error);
+    Logger.log('❌ Error en aprobarAlbergue: ' + error);
     return { success: false, error: error.toString() };
   }
 }
