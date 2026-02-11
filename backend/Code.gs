@@ -15,9 +15,11 @@ function getSpreadsheet() {
 
 /**
  * Maneja peticiones GET
+ * Soporta JSONP para permitir lectura cross-origin
  */
 function doGet(e) {
   const action = e.parameter.action;
+  const callback = e.parameter.callback; // Para JSONP
   
   try {
     let result;
@@ -58,13 +60,33 @@ function doGet(e) {
         result = { error: 'Acción no válida' };
     }
     
+    // Si hay callback (JSONP), devolver JavaScript
+    if (callback) {
+      const jsonpResponse = callback + '(' + JSON.stringify(result) + ');';
+      return ContentService
+        .createTextOutput(jsonpResponse)
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    
+    // Si no hay callback, devolver JSON normal
     return ContentService
       .createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
+    const errorResult = { error: error.toString() };
+    
+    // Si hay callback (JSONP), devolver error como JavaScript
+    if (callback) {
+      const jsonpResponse = callback + '(' + JSON.stringify(errorResult) + ');';
+      return ContentService
+        .createTextOutput(jsonpResponse)
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    
+    // Si no hay callback, devolver error como JSON
     return ContentService
-      .createTextOutput(JSON.stringify({ error: error.toString() }))
+      .createTextOutput(JSON.stringify(errorResult))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }

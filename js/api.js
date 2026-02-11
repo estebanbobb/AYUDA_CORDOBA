@@ -5,29 +5,64 @@
 
 const API = {
     /**
-     * Realiza una petición GET al backend
+     * Realiza una petición GET al backend usando JSONP
+     * (Google Apps Script requiere JSONP para leer respuestas cross-origin)
      */
     async get(endpoint) {
-        try {
-            const url = `${CONFIG.API_URL}?action=${endpoint}`;
+        return new Promise((resolve, reject) => {
+            try {
+                // Crear nombre único para la función callback
+                const callbackName = `jsonp_callback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
+                // Crear la URL con el parámetro callback
+                const url = `${CONFIG.API_URL}?action=${endpoint}&callback=${callbackName}`;
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                // Definir la función callback global
+                window[callbackName] = function (data) {
+                    // Limpiar
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+
+                    // Resolver con los datos
+                    resolve(data);
+                };
+
+                // Crear el script tag
+                const script = document.createElement('script');
+                script.src = url;
+                script.async = true;
+
+                // Manejar errores
+                script.onerror = function () {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    reject(new Error(`Error al cargar datos de ${endpoint}`));
+                };
+
+                // Timeout de 30 segundos
+                const timeout = setTimeout(() => {
+                    if (window[callbackName]) {
+                        delete window[callbackName];
+                        document.body.removeChild(script);
+                        reject(new Error(`Timeout al cargar ${endpoint}`));
+                    }
+                }, 30000);
+
+                // Limpiar timeout cuando se resuelva
+                const originalCallback = window[callbackName];
+                window[callbackName] = function (data) {
+                    clearTimeout(timeout);
+                    originalCallback(data);
+                };
+
+                // Agregar el script al DOM
+                document.body.appendChild(script);
+
+            } catch (error) {
+                console.error(`Error en GET ${endpoint}:`, error);
+                reject(error);
             }
-
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error(`Error en GET ${endpoint}:`, error);
-            throw error;
-        }
+        });
     },
 
     /**
