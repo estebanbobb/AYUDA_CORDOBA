@@ -25,6 +25,14 @@ function doGet(e) {
     let result;
     
     switch (action) {
+      case 'version':
+        // Endpoint de diagnóstico
+        result = {
+          version: '2.1-JSONP-APPROVAL-FIX',
+          timestamp: new Date().toISOString(),
+          features: ['JSONP', 'Approval Filter', 'String ID Matching']
+        };
+        break;
       case 'getSolicitudes':
         result = getSolicitudes();
         break;
