@@ -101,54 +101,77 @@ function doGet(e) {
 
 /**
  * Maneja peticiones POST
+ * Acepta tanto JSON como parámetros de formulario
  */
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    const action = data.action;
+    let action, dataParam, id, estado;
+    
+    // Intentar parsear como JSON primero
+    try {
+      const jsonData = JSON.parse(e.postData.contents);
+      action = jsonData.action;
+      dataParam = jsonData.data;
+      id = jsonData.id;
+      estado = jsonData.estado;
+    } catch (jsonError) {
+      // Si falla, intentar leer como parámetros de formulario
+      action = e.parameter.action;
+      id = e.parameter.id;
+      estado = e.parameter.estado;
+      
+      // Para datos complejos que vienen como JSON string
+      if (e.parameter.data) {
+        try {
+          dataParam = JSON.parse(e.parameter.data);
+        } catch {
+          dataParam = e.parameter.data;
+        }
+      }
+    }
     
     let result;
     
     switch (action) {
       case 'crearSolicitud':
-        result = crearSolicitud(data.data);
+        result = crearSolicitud(dataParam);
         break;
       case 'crearOferta':
-        result = crearOferta(data.data);
+        result = crearOferta(dataParam);
         break;
       case 'gestionarAlbergue':
-        result = gestionarAlbergue(data.data);
+        result = gestionarAlbergue(dataParam);
         break;
       // Admin actions
       case 'aprobarSolicitud':
-        result = aprobarSolicitud(data.id);
+        result = aprobarSolicitud(id);
         break;
       case 'rechazarSolicitud':
-        result = rechazarSolicitud(data.id);
+        result = rechazarSolicitud(id);
         break;
       case 'aprobarOferta':
-        result = aprobarOferta(data.id);
+        result = aprobarOferta(id);
         break;
       case 'rechazarOferta':
-        result = rechazarOferta(data.id);
+        result = rechazarOferta(id);
         break;
       case 'aprobarAlbergue':
-        result = aprobarAlbergue(data.id);
+        result = aprobarAlbergue(id);
         break;
       case 'registrarInventario':
-        result = registrarInventario(data.data);
+        result = registrarInventario(dataParam);
         break;
       case 'registrarTransporte':
-        result = registrarTransporte(data.data);
+        result = registrarTransporte(dataParam);
         break;
       case 'aprobarTransporte':
-        result = aprobarTransporte(data.id);
+        result = aprobarTransporte(id);
         break;
       case 'rechazarTransporte':
-        result = rechazarTransporte(data.id);
+        result = rechazarTransporte(id);
         break;
       case 'actualizarEstadoTransporte':
-        result = actualizarEstadoTransporte(data.id, data.estado);
+        result = actualizarEstadoTransporte(id, estado);
         break;
       default:
         result = { error: 'Acción no válida' };
@@ -159,6 +182,7 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
+    Logger.log('Error en doPost: ' + error);
     return ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);

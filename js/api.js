@@ -67,28 +67,39 @@ const API = {
 
     /**
      * Realiza una petición POST al backend
+     * Usa application/x-www-form-urlencoded para mejor compatibilidad
      */
     async post(endpoint, data) {
         try {
             const url = CONFIG.API_URL;
 
-            const payload = {
-                action: endpoint,
-                data: data
-            };
+            // Convertir datos a formato form-urlencoded
+            const formData = new URLSearchParams();
+            formData.append('action', endpoint);
+
+            // Agregar cada campo de data como parámetro separado
+            for (const [key, value] of Object.entries(data)) {
+                formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
+            }
 
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: JSON.stringify(payload),
-                mode: 'no-cors', // Google Apps Script requiere esto
+                body: formData.toString(),
+                redirect: 'follow'
             });
 
-            // Nota: con mode: 'no-cors', no podemos leer la respuesta
-            // Asumimos que fue exitoso si no hubo error
-            return { success: true };
+            // Intentar leer la respuesta
+            const text = await response.text();
+
+            try {
+                return JSON.parse(text);
+            } catch {
+                // Si no es JSON, asumir éxito
+                return { success: true };
+            }
         } catch (error) {
             console.error(`Error en POST ${endpoint}:`, error);
             throw error;
