@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="theme-color" content="#E53E3E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description"
+    content="Sistema de coordinación de ayuda humanitaria para las inundaciones en Córdoba, Colombia. Pide ayuda o ofrece ayuda.">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <title>Socorro Córdoba - Ayuda Humanitaria</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.ico">
+  <link rel="apple-touch-icon" href="favicon.ico">
+
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/modal.css">
+</head>
+
+<body>
+
+  <!-- Safety Banner -->
+  <div class="safety-banner" role="alert">
+    🚨 <strong>Tu seguridad es lo primero.</strong> Si estás en peligro inmediato, llama al
+    <a href="tel:123">123</a> (Policía) o
+    <a href="tel:119">119</a> (Bomberos).
+  </div>
+
+  <!-- Offline Indicator -->
+  <div class="offline-bar" id="offline-bar" role="status">
+    📡 Sin conexión - Los datos se guardarán y enviarán cuando vuelva el internet.
+  </div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>🆘 Socorro Córdoba</h1>
+        <p class="header-subtitle">Coordinación de Ayuda Humanitaria</p>
+      </div>
+      <div class="header-right">
+        <button id="stats-button" class="btn-icon" aria-label="Ver estadísticas">
+          📊
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+
+    <!-- View: Mapa -->
+    <section id="view-mapa" class="view active" aria-label="Mapa de ayuda">
+      <div class="map-container">
+        <div id="map"></div>
+
+        <!-- Floating Controls -->
+        <div class="map-controls">
+          <button id="btn-my-location" class="btn-map-control" aria-label="Usar mi ubicación">
+            📍 Mi Ubicación
+          </button>
+          <button id="btn-refresh-map" class="btn-map-control" aria-label="Actualizar mapa">
+            🔄 Actualizar
+          </button>
+        </div>
+
+        <!-- Map Legend -->
+        <div class="map-legend">
+          <h3>Leyenda</h3>
+          <div class="legend-item">
+            <span class="legend-marker marker-need">🆘</span>
+            <span>Necesitan ayuda</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-marker marker-offer">💚</span>
+            <span>Ofrecen ayuda</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-marker marker-shelter">🏠</span>
+            <span>Albergues</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Necesito Ayuda -->
+    <section id="view-necesito" class="view" aria-label="Formulario para pedir ayuda">
+      <div class="form-container">
+        <h2>🆘 Necesito Ayuda</h2>
+        <p class="form-description">Completa este formulario para que los voluntarios puedan ayudarte.</p>
+
+        <form id="form-necesito" class="aid-form">
+
+          <!-- Ubicación -->
+          <div class="form-section">
+            <h3>📍 ¿Dónde estás?</h3>
+
+            <div class="location-buttons">
+              <button type="button" id="btn-use-gps" class="btn btn-primary">
+                📍 Usar mi ubicación GPS
+              </button>
+              <button type="button" id="btn-select-map" class="btn btn-outline">
+                🗺️ Seleccionar en el mapa
+              </button>
+            </div>
+
+            <div id="location-display" class="location-display" style="display: none;">
+              <p class="location-coords">
+                <strong>Ubicación seleccionada:</strong><br>
+                <span id="location-text">-</span>
+              </p>
+            </div>
+
+            <input type="hidden" id="necesito-lat" name="lat" required>
+            <input type="hidden" id="necesito-lng" name="lng" required>
+
+            <div class="form-group">
+              <label for="necesito-barrio">Barrio o Sector</label>
+              <input type="text" id="necesito-barrio" name="barrio" placeholder="Ej: El Recreo, Boston, etc." required>
+            </div>
+
+            <div class="form-group">
+              <label for="necesito-direccion">Dirección o Referencia</label>
+              <textarea id="necesito-direccion" name="direccion" rows="2"
+                placeholder="Ej: Calle 30 con Carrera 5, casa azul al lado de la tienda"></textarea>
+            </div>
+          </div>
+
+          <!-- Información Personal -->
+          <div class="form-section">
+            <h3>👤 Información de Contacto</h3>
+
+            <div class="form-group">
+              <label for="necesito-nombre">Nombre</label>
+              <input type="text" id="necesito-nombre" name="nombre" placeholder="Tu nombre" required>
+            </div>
+
+            <div class="form-group">
+              <label for="necesito-telefono">Teléfono / WhatsApp</label>
+              <input type="tel" id="necesito-telefono" name="telefono" placeholder="Ej: 300 123 4567" required>
+            </div>
+          </div>
+
+          <!-- Tipo de Ayuda -->
+          <div class="form-section">
+            <h3>🆘 ¿Qué necesitas?</h3>
+
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="agua">
+                <span class="checkbox-label">💧 Agua potable</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="comida">
+                <span class="checkbox-label">🍲 Comida</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="medicina">
+                <span class="checkbox-label">💊 Medicinas</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="ropa">
+                <span class="checkbox-label">👕 Ropa</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="albergue">
+                <span class="checkbox-label">🏠 Albergue</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="rescate">
+                <span class="checkbox-label">🚨 Rescate urgente</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="necesito-personas">¿Cuántas personas son?</label>
+              <input type="number" id="necesito-personas" name="personas" min="1" value="1" required>
+            </div>
+
+            <div class="form-group">
+              <label for="necesito-notas">Información adicional (opcional)</label>
+              <textarea id="necesito-notas" name="notas" rows="3"
+                placeholder="Ej: Hay niños pequeños, personas mayores, situación médica especial, etc."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-large">
+              📤 Enviar Solicitud de Ayuda
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- View: Tengo Ayuda -->
+    <section id="view-tengo" class="view" aria-label="Formulario para ofrecer ayuda">
+      <div class="form-container">
+        <h2>💚 Tengo Ayuda para Ofrecer</h2>
+        <p class="form-description">Gracias por tu solidaridad. Completa este formulario para coordinar la ayuda.</p>
+
+        <form id="form-tengo" class="aid-form">
+
+          <!-- Información Personal -->
+          <div class="form-section">
+            <h3>👤 Información de Contacto</h3>
+
+            <div class="form-group">
+              <label for="tengo-nombre">Nombre</label>
+              <input type="text" id="tengo-nombre" name="nombre" placeholder="Tu nombre" required>
+            </div>
+
+            <div class="form-group">
+              <label for="tengo-telefono">Teléfono / WhatsApp</label>
+              <input type="tel" id="tengo-telefono" name="telefono" placeholder="Ej: 300 123 4567" required>
+            </div>
+          </div>
+
+          <!-- Tipo de Ayuda -->
+          <div class="form-section">
+            <h3>💚 ¿Qué puedes ofrecer?</h3>
+
+            <div class="checkbox-group">
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="agua">
+                <span class="checkbox-label">💧 Agua potable</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="comida">
+                <span class="checkbox-label">🍲 Comida</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="medicina">
+                <span class="checkbox-label">💊 Medicinas</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="ropa">
+                <span class="checkbox-label">👕 Ropa</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="transporte">
+                <span class="checkbox-label">🚗 Transporte</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="ayuda" value="voluntario">
+                <span class="checkbox-label">🙋 Trabajo voluntario</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="tengo-cantidad">Cantidad o descripción</label>
+              <textarea id="tengo-cantidad" name="cantidad" rows="2"
+                placeholder="Ej: 50 litros de agua, 20 mercados, puedo transportar 5 personas, etc."
+                required></textarea>
+            </div>
+          </div>
+
+          <!-- Ubicación -->
+          <div class="form-section">
+            <h3>📍 ¿Desde dónde ofreces la ayuda?</h3>
+
+            <div class="location-buttons">
+              <button type="button" id="btn-use-gps-tengo" class="btn btn-primary">
+                📍 Usar mi ubicación GPS
+              </button>
+              <button type="button" id="btn-select-map-tengo" class="btn btn-outline">
+                🗺️ Seleccionar en el mapa
+              </button>
+            </div>
+
+            <div id="location-display-tengo" class="location-display" style="display: none;">
+              <p class="location-coords">
+                <strong>Ubicación seleccionada:</strong><br>
+                <span id="location-text-tengo">-</span>
+              </p>
+            </div>
+
+            <input type="hidden" id="tengo-lat" name="lat">
+            <input type="hidden" id="tengo-lng" name="lng">
+
+            <div class="form-group">
+              <label for="tengo-barrio">Barrio o Sector</label>
+              <input type="text" id="tengo-barrio" name="barrio" placeholder="Ej: El Recreo, Boston, etc.">
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-large">
+              📤 Registrar Oferta de Ayuda
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- View: Albergues -->
+    <section id="view-albergues" class="view" aria-label="Lista de albergues">
+      <div class="form-container">
+        <h2>🏠 Albergues Disponibles</h2>
+        <p class="form-description">Refugios temporales para personas afectadas por la inundación.</p>
+
+        <div id="albergues-list" class="albergues-list">
+          <!-- Se llenará dinámicamente con JavaScript -->
+          <div class="loading">Cargando albergues...</div>
+        </div>
+
+        <button id="btn-add-albergue" class="btn btn-primary btn-large" style="margin-top: var(--spacing-lg);">
+          ➕ Registrar Nuevo Albergue
+        </button>
+      </div>
+    </section>
+
+    <!-- View: Admin Panel -->
+    <section id="view-admin" class="view" aria-label="Panel de administración">
+
+      <!-- Admin Login -->
+      <div id="admin-login" class="admin-login">
+        <div class="admin-login-card">
+          <h2>🔐 Panel de Administración</h2>
+          <p class="form-description">Ingresa la contraseña para acceder al panel de control.</p>
+
+          <form id="admin-login-form">
+            <div class="form-group">
+              <label for="admin-password">Contraseña</label>
+              <input type="password" id="admin-password" name="password" placeholder="Ingresa la contraseña" required
+                autofocus>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large">
+              🔓 Iniciar Sesión
+            </button>
+          </form>
+
+          <p class="admin-hint">💡 Contraseña por defecto: <code>admin</code></p>
+        </div>
+      </div>
+
+      <!-- Admin Dashboard -->
+      <div id="admin-dashboard" class="admin-dashboard" style="display: none;">
+
+        <!-- Dashboard Header -->
+        <div class="admin-header">
+          <div>
+            <h2>👤 Panel de Administración</h2>
+            <p>Gestiona y aprueba registros del sistema</p>
+          </div>
+          <button id="btn-logout" class="btn btn-outline">
+            🚪 Cerrar Sesión
+          </button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="admin-stats">
+          <div class="stat-card stat-danger">
+            <div class="stat-icon">🆘</div>
+            <div class="stat-info">
+              <div class="stat-value" id="count-solicitudes">0</div>
+              <div class="stat-label">Solicitudes Pendientes</div>
+            </div>
+          </div>
+
+          <div class="stat-card stat-success">
+            <div class="stat-icon">💚</div>
+            <div class="stat-info">
+              <div class="stat-value" id="count-ofertas">0</div>
+              <div class="stat-label">Ofertas Pendientes</div>
+            </div>
+          </div>
+
+          <div class="stat-card stat-warning">
+            <div class="stat-icon">🏠</div>
+            <div class="stat-info">
+              <div class="stat-value" id="count-albergues">0</div>
+              <div class="stat-label">Albergues Pendientes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Tabs -->
+        <div class="admin-tabs">
+          <button class="admin-tab active" data-tab="solicitudes">
+            🆘 Solicitudes
+          </button>
+          <button class="admin-tab" data-tab="ofertas">
+            💚 Ofertas
+          </button>
+          <button class="admin-tab" data-tab="albergues">
+            🏠 Albergues
+          </button>
+          <button class="admin-tab" data-tab="inventario">
+            📦 Inventario
+          </button>
+        </div>
+
+        <!-- Tab Content: Solicitudes -->
+        <div id="admin-solicitudes" class="admin-tab-content active">
+          <h3>🆘 Solicitudes Pendientes de Aprobación</h3>
+          <div id="solicitudes-pendientes-list" class="pending-list">
+            <div class="loading">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Ofertas -->
+        <div id="admin-ofertas" class="admin-tab-content">
+          <h3>💚 Ofertas Pendientes de Aprobación</h3>
+          <div id="ofertas-pendientes-list" class="pending-list">
+            <div class="loading">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Albergues -->
+        <div id="admin-albergues" class="admin-tab-content">
+          <h3>🏠 Albergues Pendientes de Verificación</h3>
+          <div id="albergues-pendientes-list" class="pending-list">
+            <div class="loading">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Tab Content: Inventario -->
+        <div id="admin-inventario" class="admin-tab-content">
+          <h3>📦 Registrar Inventario de Albergue</h3>
+          <p class="form-description">Actualiza el inventario disponible en cada albergue.</p>
+
+          <form id="form-inventario" class="aid-form">
+            <div class="form-section">
+              <h4>🏠 Selecciona el Albergue</h4>
+
+              <div class="form-group">
+                <label for="inventario-albergue">Albergue</label>
+                <select id="inventario-albergue" name="albergue" required>
+                  <option value="">Cargando albergues...</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h4>📊 Recursos Disponibles</h4>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="inventario-agua">💧 Agua (Litros)</label>
+                  <input type="number" id="inventario-agua" name="agua" min="0" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                  <label for="inventario-comida">🍲 Comida (Raciones)</label>
+                  <input type="number" id="inventario-comida" name="comida" min="0" placeholder="0">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="inventario-medicinas">💊 Medicinas Disponibles</label>
+                <textarea id="inventario-medicinas" name="medicinas" rows="2"
+                  placeholder="Ej: Acetaminofén, Ibuprofeno, Suero oral, etc."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="inventario-ropa">👕 Ropa Disponible</label>
+                <textarea id="inventario-ropa" name="ropa" rows="2"
+                  placeholder="Ej: Ropa de niño: 20 prendas, Ropa de adulto: 30 prendas, etc."></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="inventario-notas">📝 Notas Adicionales</label>
+                <textarea id="inventario-notas" name="notas" rows="2"
+                  placeholder="Información adicional sobre el inventario"></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-large">
+                💾 Guardar Inventario
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Tab Bar -->
+  <nav class="tab-bar" role="navigation" aria-label="Navegación principal">
+    <a href="#mapa" id="tab-mapa" class="tab-item active" role="tab" aria-label="Ver mapa">
+      <span class="tab-icon">🗺️</span>
+      <span class="tab-label">Mapa</span>
+    </a>
+    <a href="#necesito" id="tab-necesito" class="tab-item" role="tab" aria-label="Pedir ayuda">
+      <span class="tab-icon">🆘</span>
+      <span class="tab-label">Necesito</span>
+    </a>
+    <a href="#tengo" id="tab-tengo" class="tab-item" role="tab" aria-label="Ofrecer ayuda">
+      <span class="tab-icon">💚</span>
+      <span class="tab-label">Tengo</span>
+    </a>
+    <a href="#albergues" id="tab-albergues" class="tab-item" role="tab" aria-label="Ver albergues">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">Albergues</span>
+    </a>
+    <a href="#admin" id="tab-admin" class="tab-item" role="tab" aria-label="Panel de administración">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">Admin</span>
+    </a>
+  </nav>
+
+  <!-- Modal: Registrar Albergue -->
+  <div id="modal-albergue" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🏠 Registrar Nuevo Albergue</h2>
+        <button id="btn-close-modal" class="btn-close">✕</button>
+      </div>
+
+      <form id="form-albergue" class="aid-form">
+        <!-- Información Básica -->
+        <div class="form-section">
+          <h3>📋 Información del Albergue</h3>
+
+          <div class="form-group">
+            <label for="albergue-nombre">Nombre del Albergue *</label>
+            <input type="text" id="albergue-nombre" name="nombre" placeholder="Ej: Colegio San José" required>
+          </div>
+
+          <div class="form-group">
+            <label for="albergue-contacto">Teléfono de Contacto *</label>
+            <input type="tel" id="albergue-contacto" name="contacto" placeholder="Ej: 300 123 4567" required>
+          </div>
+        </div>
+
+        <!-- Ubicación -->
+        <div class="form-section">
+          <h3>📍 Ubicación</h3>
+
+          <div class="location-buttons">
+            <button type="button" id="btn-use-gps-albergue" class="btn btn-primary">
+              📍 Usar mi ubicación GPS
+            </button>
+            <button type="button" id="btn-select-map-albergue" class="btn btn-outline">
+              🗺️ Seleccionar en el mapa
+            </button>
+          </div>
+
+          <div id="location-display-albergue" class="location-display" style="display: none;">
+            <p class="location-coords">
+              <strong>Ubicación seleccionada:</strong><br>
+              <span id="location-text-albergue">-</span>
+            </p>
+          </div>
+
+          <input type="hidden" id="albergue-lat" name="lat" required>
+          <input type="hidden" id="albergue-lng" name="lng" required>
+
+          <div class="form-group">
+            <label for="albergue-direccion">Dirección Completa *</label>
+            <textarea id="albergue-direccion" name="direccion" rows="2" placeholder="Ej: Calle 30 #15-20, Barrio Centro"
+              required></textarea>
+          </div>
+        </div>
+
+        <!-- Capacidad -->
+        <div class="form-section">
+          <h3>👥 Capacidad</h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="albergue-capacidad">Capacidad Total *</label>
+              <input type="number" id="albergue-capacidad" name="capacidadTotal" min="1" placeholder="100" required>
+            </div>
+
+            <div class="form-group">
+              <label for="albergue-ocupacion">Ocupación Actual</label>
+              <input type="number" id="albergue-ocupacion" name="ocupacionActual" min="0" value="0" placeholder="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- Recursos -->
+        <div class="form-section">
+          <h3>📦 Recursos Disponibles</h3>
+
+          <div class="form-group">
+            <label for="albergue-recursos">Descripción de Recursos</label>
+            <textarea id="albergue-recursos" name="recursos" rows="3"
+              placeholder="Ej: Agua potable, comida, colchonetas, baños, electricidad, etc."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" id="btn-cancel-albergue" class="btn btn-outline">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary btn-large">
+            📤 Registrar Albergue
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Loading Spinner -->
+  <div id="spinner-overlay" class="spinner-overlay" role="status" aria-label="Cargando">
+    <div class="spinner"></div>
+    <div class="spinner-text">Cargando...</div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- App JS -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/geolocation.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/offline.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+
+</html>
