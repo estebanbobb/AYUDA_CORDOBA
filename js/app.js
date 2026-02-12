@@ -1,7 +1,3 @@
-// ============================================
-// SOCORRO CÓRDOBA - APLICACIÓN PRINCIPAL
-// ============================================
-
 var App = (function () {
     'use strict';
 
@@ -25,7 +21,7 @@ var App = (function () {
         // Manejar rutas iniciales (hash)
         _handleRoute();
 
-        // Escuchar cambios de hash
+        // Escuchar cambios de hash (bindeado para asegurar contexto, aunque en IIFE no es tan crítico si usamos funciones directas)
         window.addEventListener('hashchange', _handleRoute);
 
         // Cargar datos iniciales del mapa
@@ -53,8 +49,7 @@ var App = (function () {
         const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
-                // El comportamiento por defecto del enlace cambiará el hash
-                // y activará handleRoute, así que no necesitamos hacer mucho aquí
+                // El link cambiará el hash, lo que disparará hashchange -> _handleRoute
                 const viewId = link.getAttribute('href').substring(1);
                 _updateActiveLink(viewId);
             });
@@ -84,7 +79,7 @@ var App = (function () {
     /**
      * Cambia la vista visible (Privado)
      */
-    function _switchView(viewId) {
+    async function _switchView(viewId) {
         // Ocultar todas las vistas
         document.querySelectorAll('.view-section').forEach(view => {
             view.classList.remove('active');
@@ -113,131 +108,97 @@ var App = (function () {
                     Admin.showDashboard();
                     Admin.loadDashboardData();
                 }
-                await this.loadAlbergues();
-
-            } catch (error) {
-                console.error('Error cargando datos iniciales:', error);
-                Utils.showToast('⚠️ Error al cargar algunos datos', 'error');
-            } finally {
-                Utils.showSpinner(false);
+            } else {
+                if (typeof Admin !== 'undefined') Admin.showLogin();
             }
-        },
+        } else if (viewId === 'donaciones' || viewId === 'albergues') {
+            // Si hay lógica específica para carga perezosa (lazy load) de estas vistas
+            if (viewId === 'albergues') {
+                await loadAlbergues();
+            }
+        }
+    }
 
     /**
      * Carga y muestra la lista de albergues
      */
-    async loadAlbergues() {
-            const container = document.getElementById('albergues-list');
-            if (!container) return;
+    async function loadAlbergues() {
+        const container = document.getElementById('albergues-list');
+        if (!container) return;
 
-            try {
-                const albergues = await API.getAlbergues();
-
-                if (!albergues || albergues.length === 0) {
-                    container.innerHTML = '<div class="loading">No hay albergues registrados aún.</div>';
-                    return;
-                }
-
-                container.innerHTML = '';
-
-                albergues.forEach(albergue => {
-                    const card = this.createAlbergueCard(albergue);
-                    container.appendChild(card);
-                });
-
-            } catch (error) {
-                console.error('Error cargando albergues:', error);
-                container.innerHTML = '<div class="loading">Error al cargar albergues.</div>';
+        try {
+            // Intentar cargar albergues
+            // Nota: API.getAlbergues() debe existir y devolver una promesa
+            let albergues = [];
+            if (typeof API !== 'undefined') {
+                albergues = await API.getAlbergues();
             }
-        },
 
-        /**
-         * Crea una tarjeta de albergue
-         */
-        createAlbergueCard(albergue) {
-            const card = document.createElement('div');
-            card.className = 'albergue-card';
+            if (!albergues || albergues.length === 0) {
+                container.innerHTML = '<p class="empty-state">No hay albergues registrados por el momento.</p>';
+                return;
+            }
 
-            const capacidad = albergue.capacidadTotal || 0;
-            const ocupacion = albergue.ocupacionActual || 0;
-            const disponible = capacidad - ocupacion;
-            const estado = disponible > 0 ? 'activo' : 'lleno';
+            container.innerHTML = albergues.map(a => {
+                const capacidad = a.capacidadTotal || 0;
+                const ocupacion = a.ocupacionActual || 0;
+                const porcentaje = capacidad > 0 ? Math.round((ocupacion / capacidad) * 100) : 0;
+                let estadoClass = 'battery-high';
+                if (porcentaje > 80) estadoClass = 'battery-low';
+                else if (porcentaje > 50) estadoClass = 'battery-medium';
 
-            card.innerHTML = `
-      <div class="albergue-header">
-        <h3 class="albergue-name">🏠 ${albergue.nombre}</h3>
-        <span class="albergue-status ${estado}">
-          ${estado === 'activo' ? 'Disponible' : 'Lleno'}
-        </span>
-      </div>
-      <div class="albergue-info">
-        <p><strong>📍 Dirección:</strong> ${albergue.direccion || 'No especificada'}</p>
-        <p><strong>👥 Capacidad:</strong> ${ocupacion}/${capacidad} (${disponible} espacios disponibles)</p>
-        ${albergue.recursos ? `<p><strong>📦 Recursos:</strong> ${albergue.recursos}</p>` : ''}
-        ${albergue.contacto ? `<p><strong>📞 Contacto:</strong> ${albergue.contacto}</p>` : ''}
-      </div>
-      ${albergue.lat && albergue.lng ? `
-        <button class="btn btn-outline" onclick="App.showAlbergueOnMap(${albergue.lat}, ${albergue.lng})">
-          🗺️ Ver en el mapa
-        </button>
-      ` : ''}
-    `;
+                return `
+          <div class="card albergue-card" onclick="App.showAlbergueOnMap(${a.lat}, ${a.lng})">
+            <div class="card-header">
+              <h3>🏠 ${a.nombre}</h3>
+            </div>
+            <div class="card-body">
+              <p><strong>📍 Dirección:</strong> ${a.direccion || 'No especificada'}</p>
+              
+              <div class="capacity-bar">
+                <div class="capacity-fill ${estadoClass}" style="width: ${porcentaje}%"></div>
+              </div>
+              <p class="capacity-text">Ocupación: ${ocupacion}/${capacidad} (${porcentaje}%)</p>
+              
+              <p><strong>📞 Contacto:</strong> ${a.contacto || 'No especificado'}</p>
+              ${a.recursos ? `<p><strong>📦 Recursos:</strong> ${a.recursos}</p>` : ''}
+            </div>
+          </div>
+        `;
+            }).join('');
 
-            return card;
-        },
-
-        /**
-         * Muestra un albergue en el mapa
-         */
-        showAlbergueOnMap(lat, lng) {
-            window.location.hash = 'mapa';
-
-            setTimeout(() => {
-                if (MapManager.map) {
-                    MapManager.map.setView([lat, lng], 16);
-                }
-            }, 200);
-        },
+        } catch (error) {
+            console.error('Error cargando albergues:', error);
+            container.innerHTML = '<p class="error-state">Error al cargar la lista de albergues.</p>';
+        }
+    }
 
     /**
-     * Muestra estadísticas
+     * Muestra un albergue en el mapa
      */
-    async showStats() {
-            try {
-                const stats = await API.getEstadisticas();
+    function showAlbergueOnMap(lat, lng) {
+        if (!lat || !lng) return;
 
-                let message = '📊 ESTADÍSTICAS\n\n';
-                message += `🆘 Solicitudes: ${stats.totalSolicitudes || 0}\n`;
-                message += `💚 Ofertas: ${stats.totalOfertas || 0}\n`;
-                message += `🏠 Albergues: ${stats.totalAlbergues || 0}\n`;
-                message += `✅ Atendidos: ${stats.atendidos || 0}`;
+        // Cambiar a vista mapa
+        window.location.hash = 'mapa';
 
-                alert(message);
-            } catch (error) {
-                console.error('Error obteniendo estadísticas:', error);
-                Utils.showToast('❌ Error al obtener estadísticas', 'error');
+        // Esperar un poco a que el mapa se haga visible y redimensione
+        setTimeout(() => {
+            if (typeof MapManager !== 'undefined') {
+                MapManager.setView([lat, lng], 18);
             }
-        },
+        }, 100);
+    }
+
+    // API Pública
+    return {
+        init: init,
+        loadAlbergues: loadAlbergues,
+        showAlbergueOnMap: showAlbergueOnMap
     };
+})();
 
-    // Inicializar cuando el DOM esté listo
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => App.init());
-    } else {
-        App.init();
-    }
-
-    // ============================================
-    // SERVICE WORKER REGISTRATION
-    // ============================================
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then((registration) => {
-                    console.log('✅ Service Worker registrado con scope:', registration.scope);
-                })
-                .catch((error) => {
-                    console.error('❌ Falló el registro del Service Worker:', error);
-                });
-        });
-    }
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
