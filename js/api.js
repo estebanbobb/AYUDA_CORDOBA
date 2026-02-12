@@ -18,13 +18,23 @@ const API = {
                 const url = `${CONFIG.API_URL}?action=${endpoint}&callback=${callbackName}`;
 
                 // Definir la función callback global
-                window[callbackName] = function (data) {
+                window[callbackName] = function (response) {
                     // Limpiar
                     delete window[callbackName];
                     document.body.removeChild(script);
 
-                    // Resolver con los datos
-                    resolve(data);
+                    // Manejar formato estandarizado (Socorro pattern)
+                    if (response && response.success !== undefined) {
+                        if (response.success) {
+                            resolve(response.data); // Devolver solo los datos para compatibilidad
+                        } else {
+                            console.error('API Error:', response.error, response.code);
+                            reject(new Error(response.error || 'Error desconocido del servidor'));
+                        }
+                    } else {
+                        // Formato antiguo (directo)
+                        resolve(response);
+                    }
                 };
 
                 // Crear el script tag
