@@ -163,7 +163,8 @@ var Admin = (function () {
      * Carga solicitudes pendientes (Privado)
      */
     async function _loadSolicitudesPendientes() {
-        const solicitudes = await API.getSolicitudesPendientes();
+        let solicitudes = await API.getSolicitudesPendientes();
+        if (solicitudes) solicitudes = solicitudes.filter(s => s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion);
         const container = document.getElementById('solicitudes-pendientes-list');
 
         if (!solicitudes || solicitudes.length === 0) {
@@ -201,7 +202,8 @@ var Admin = (function () {
      * Carga ofertas pendientes (Privado)
      */
     async function _loadOfertasPendientes() {
-        const ofertas = await API.getOfertasPendientes();
+        let ofertas = await API.getOfertasPendientes();
+        if (ofertas) ofertas = ofertas.filter(o => o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion);
         const container = document.getElementById('ofertas-pendientes-list');
 
         if (!ofertas || ofertas.length === 0) {
@@ -238,7 +240,8 @@ var Admin = (function () {
      * Carga albergues pendientes (Privado)
      */
     async function _loadAlberguesPendientes() {
-        const albergues = await API.getAlberguesPendientes();
+        let albergues = await API.getAlberguesPendientes();
+        if (albergues) albergues = albergues.filter(a => a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion);
         const container = document.getElementById('albergues-pendientes-list');
 
         if (!albergues || albergues.length === 0) {
