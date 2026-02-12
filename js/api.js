@@ -170,7 +170,22 @@ const API = (function () {
 
     // Data General
     async function getAllData() {
-        return get('getAllData'); // Si existe
+        try {
+            const [solicitudes, ofertas, albergues] = await Promise.all([
+                get('getSolicitudes'),
+                get('getOfertas'),
+                get('getAlbergues')
+            ]);
+
+            return {
+                solicitudes: solicitudes || [],
+                ofertas: ofertas || [],
+                albergues: albergues || []
+            };
+        } catch (error) {
+            console.error('Error getting all data:', error);
+            throw error;
+        }
     }
 
     // API Pública
