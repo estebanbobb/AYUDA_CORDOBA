@@ -110,16 +110,33 @@ var Admin = (function () {
      */
     async function loadDashboardData() {
         try {
-            const [solicitudesPendientes, ofertasPendientes, alberguesPendientes] = await Promise.all([
+            let [solicitudesPendientes, ofertasPendientes, alberguesPendientes] = await Promise.all([
                 API.getSolicitudesPendientes(),
                 API.getOfertasPendientes(),
                 API.getAlberguesPendientes(),
             ]);
 
+            console.log('🔍 DEBUG Dashboard Raw Counts:', {
+                solicitudes: solicitudesPendientes ? solicitudesPendientes.length : 0,
+                ofertas: ofertasPendientes ? ofertasPendientes.length : 0,
+                albergues: alberguesPendientes ? alberguesPendientes.length : 0
+            });
+
+            // Filtrado del lado del cliente (Security Shield)
+            if (solicitudesPendientes) solicitudesPendientes = solicitudesPendientes.filter(s => s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion);
+            if (ofertasPendientes) ofertasPendientes = ofertasPendientes.filter(o => o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion);
+            if (alberguesPendientes) alberguesPendientes = alberguesPendientes.filter(a => a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion);
+
+            console.log('🔍 DEBUG Dashboard Filtered Counts:', {
+                solicitudes: solicitudesPendientes ? solicitudesPendientes.length : 0,
+                ofertas: ofertasPendientes ? ofertasPendientes.length : 0,
+                albergues: alberguesPendientes ? alberguesPendientes.length : 0
+            });
+
             // Actualizar contadores
-            document.getElementById('count-solicitudes').textContent = solicitudesPendientes.length;
-            document.getElementById('count-ofertas').textContent = ofertasPendientes.length;
-            document.getElementById('count-albergues').textContent = alberguesPendientes.length;
+            document.getElementById('count-solicitudes').textContent = solicitudesPendientes ? solicitudesPendientes.length : 0;
+            document.getElementById('count-ofertas').textContent = ofertasPendientes ? ofertasPendientes.length : 0;
+            document.getElementById('count-albergues').textContent = alberguesPendientes ? alberguesPendientes.length : 0;
 
             // Cargar primera pestaña
             _switchTab('solicitudes');
@@ -164,7 +181,17 @@ var Admin = (function () {
      */
     async function _loadSolicitudesPendientes() {
         let solicitudes = await API.getSolicitudesPendientes();
-        if (solicitudes) solicitudes = solicitudes.filter(s => s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion);
+        console.log('🔍 DEBUG Solicitudes Raw:', JSON.stringify(solicitudes));
+
+        // Filtrado del lado del cliente por seguridad (si el backend devuelve aprobadas)
+        if (solicitudes) {
+            solicitudes = solicitudes.filter(s => {
+                const keep = s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion;
+                if (!keep) console.log(`🗑️ Filtrando solicitud procesada: ${s.nombre} (${s.estadoAprobacion})`);
+                return keep;
+            });
+        }
+
         const container = document.getElementById('solicitudes-pendientes-list');
 
         if (!solicitudes || solicitudes.length === 0) {
@@ -203,7 +230,17 @@ var Admin = (function () {
      */
     async function _loadOfertasPendientes() {
         let ofertas = await API.getOfertasPendientes();
-        if (ofertas) ofertas = ofertas.filter(o => o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion);
+        console.log('🔍 DEBUG Ofertas Raw:', JSON.stringify(ofertas));
+
+        // Filtrado del lado del cliente
+        if (ofertas) {
+            ofertas = ofertas.filter(o => {
+                const keep = o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion;
+                if (!keep) console.log(`🗑️ Filtrando oferta procesada: ${o.nombre} (${o.estadoAprobacion})`);
+                return keep;
+            });
+        }
+
         const container = document.getElementById('ofertas-pendientes-list');
 
         if (!ofertas || ofertas.length === 0) {
@@ -241,7 +278,17 @@ var Admin = (function () {
      */
     async function _loadAlberguesPendientes() {
         let albergues = await API.getAlberguesPendientes();
-        if (albergues) albergues = albergues.filter(a => a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion);
+        console.log('🔍 DEBUG Albergues Raw:', JSON.stringify(albergues));
+
+        // Filtrado del lado del cliente
+        if (albergues) {
+            albergues = albergues.filter(a => {
+                const keep = a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion;
+                if (!keep) console.log(`🗑️ Filtrando albergue procesado: ${a.nombre} (${a.estadoAprobacion})`);
+                return keep;
+            });
+        }
+
         const container = document.getElementById('albergues-pendientes-list');
 
         if (!albergues || albergues.length === 0) {
