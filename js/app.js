@@ -86,12 +86,14 @@ var App = (function () {
         });
 
         // Mostrar vista actual
-        const currentViewEl = document.getElementById(viewId);
+        const currentViewEl = document.getElementById('view-' + viewId);
         if (currentViewEl) {
             currentViewEl.classList.add('active');
         } else {
             // Si la vista no existe, volver al mapa
-            window.location.hash = 'mapa';
+            if (viewId !== 'mapa') {
+                window.location.hash = 'mapa';
+            }
             return;
         }
 

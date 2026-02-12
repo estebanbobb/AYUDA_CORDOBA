@@ -3,7 +3,7 @@ const CONFIG = (function () {
 
     return {
         // API URL del Backend (Google Apps Script)
-        API_URL: 'https://script.google.com/macros/s/AKfycbzQyM1wO3-A-Fqg34x4v-lVNJDjU4CJTgwSypP-X2N5/exec',
+        API_URL: 'https://script.google.com/macros/s/AKfycbw101oSuVyaUGk6NWQvRSrizTEFAk7VjHNXHFwqPISThqUwYLNe5x4Htz6XNyAGHyPhTg/exec',
 
         // Configuración del Mapa
         MAP: {
