@@ -120,12 +120,27 @@ function doPost(e) {
       id = e.parameter.id;
       estado = e.parameter.estado;
       
-      // Para datos complejos que vienen como JSON string
+      // Para datos complejos que vienen como JSON string en el parámetro 'data'
       if (e.parameter.data) {
         try {
           dataParam = JSON.parse(e.parameter.data);
         } catch {
           dataParam = e.parameter.data;
+        }
+      } else {
+        // Si no hay parámetro 'data', construir objeto desde parámetros individuales
+        // Esto es para cuando se envían todos los campos por separado
+        dataParam = {};
+        for (let key in e.parameter) {
+          if (key !== 'action') {
+            try {
+              // Intentar parsear como JSON por si es un objeto
+              dataParam[key] = JSON.parse(e.parameter[key]);
+            } catch {
+              // Si no es JSON, usar el valor directo
+              dataParam[key] = e.parameter[key];
+            }
+          }
         }
       }
     }
