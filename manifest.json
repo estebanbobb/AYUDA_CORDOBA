@@ -1,21 +1,27 @@
 {
-  "name": "socorro-cordoba",
+  "name": "Socorro Córdoba - Ayuda Humanitaria",
   "short_name": "Socorro",
-  "description": "Sistema de coordinación de ayuda humanitaria para las inundaciones en Córdoba, Colombia",
-  "start_url": "/",
+  "description": "Sistema de coordinación de ayuda humanitaria para las inundaciones en Córdoba, Colombia. Funciona sin internet.",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#F7FAFC",
   "theme_color": "#E53E3E",
   "orientation": "portrait-primary",
+  "categories": [
+    "medical",
+    "social",
+    "emergency"
+  ],
   "icons": [
     {
-      "src": "/images/icon-192.png",
+      "src": "images/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/images/icon-512.png",
+      "src": "images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
