@@ -81,7 +81,7 @@ var App = (function () {
      */
     async function _switchView(viewId) {
         // Ocultar todas las vistas
-        document.querySelectorAll('.view-section').forEach(view => {
+        document.querySelectorAll('.view').forEach(view => {
             view.classList.remove('active');
         });
 
