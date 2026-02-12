@@ -42,10 +42,23 @@ const CONFIG = (function () {
             ENABLE_HIGH_ACCURACY: true
         },
 
+        // Configuración Offline
+        OFFLINE: {
+            STORAGE_KEY: 'socorro_offline_data',
+            MAX_ITEMS: 50
+        },
+
+        // Seguridad (Hash de Admin)
+        SECURITY: {
+            ADMIN_PASSWORD_HASH: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // "admin"
+            SESSION_DURATION: 24 * 60 * 60 * 1000 // 24 horas
+        },
+
         // Keys para LocalStorage
         STORAGE_KEYS: {
-            PENDING_REQUESTS: 'socorro_pending_requests',
-            USER_SESSION: 'socorro_user_session'
+            PENDING_REQUESTS: 'socorro_pending_requests', // Legacy? Offline usa socorro_offline_data
+            USER_SESSION: 'socorro_user_session',
+            ADMIN_SESSION: 'socorro_admin_session'
         },
 
         // Mensajes del Sistema

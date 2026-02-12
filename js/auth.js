@@ -5,10 +5,12 @@
 const Auth = (function () {
     'use strict';
 
-    // Constantes privadas
-    const ADMIN_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // "admin"
-    const SESSION_KEY = 'socorro_admin_session';
-    const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 horas
+    // Constantes privadas (Referenciando CONFIG)
+    const SECRET_KEY = 'socorro-secret';
+    const ADMIN_PASSWORD_HASH = CONFIG.SECURITY.ADMIN_PASSWORD_HASH;
+    const SESSION_KEY = CONFIG.STORAGE_KEYS.ADMIN_SESSION;
+    const SESSION_DURATION = CONFIG.SECURITY.SESSION_DURATION;
+
 
     /**
      * Genera un hash simple de una cadena
