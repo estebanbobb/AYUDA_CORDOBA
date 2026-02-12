@@ -2,11 +2,13 @@
 // SOCORRO CÓRDOBA - UTILIDADES
 // ============================================
 
-const Utils = {
+const Utils = (function () {
+    'use strict';
+
     /**
      * Muestra un toast notification
      */
-    showToast(message, type = 'info') {
+    function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         if (!container) return;
 
@@ -21,12 +23,12 @@ const Utils = {
             toast.style.animation = 'slideOutRight 0.3s ease-out';
             setTimeout(() => toast.remove(), 300);
         }, 5000);
-    },
+    }
 
     /**
      * Muestra/oculta el spinner de carga
      */
-    showSpinner(show = true) {
+    function showSpinner(show = true) {
         const spinner = document.getElementById('spinner-overlay');
         if (spinner) {
             if (show) {
@@ -35,19 +37,19 @@ const Utils = {
                 spinner.classList.remove('show');
             }
         }
-    },
+    }
 
     /**
      * Formatea coordenadas para mostrar
      */
-    formatCoords(lat, lng) {
+    function formatCoords(lat, lng) {
         return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    },
+    }
 
     /**
      * Valida un formulario
      */
-    validateForm(formElement) {
+    function validateForm(formElement) {
         const inputs = formElement.querySelectorAll('[required]');
         let isValid = true;
 
@@ -61,12 +63,12 @@ const Utils = {
         });
 
         return isValid;
-    },
+    }
 
     /**
      * Obtiene los valores de un formulario
      */
-    getFormData(formElement) {
+    function getFormData(formElement) {
         const formData = new FormData(formElement);
         const data = {};
 
@@ -95,12 +97,12 @@ const Utils = {
         data.timestamp = new Date().toISOString();
 
         return data;
-    },
+    }
 
     /**
      * Limpia un formulario
      */
-    resetForm(formElement) {
+    function resetForm(formElement) {
         formElement.reset();
 
         // Limpiar displays de ubicación
@@ -114,39 +116,40 @@ const Utils = {
         hiddenInputs.forEach(input => {
             input.value = '';
         });
-    },
+    }
 
     /**
      * Genera un ID único
      */
-    generateId() {
+    function generateId() {
         return 'SC' + Date.now() + Math.random().toString(36).substr(2, 9);
-    },
+    }
 
     /**
      * Calcula la distancia entre dos puntos (en km)
      */
-    calculateDistance(lat1, lon1, lat2, lon2) {
+    function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371; // Radio de la Tierra en km
-        const dLat = this.deg2rad(lat2 - lat1);
-        const dLon = this.deg2rad(lon2 - lon1);
+        const dLat = _deg2rad(lat2 - lat1);
+        const dLon = _deg2rad(lon2 - lon1);
         const a =
             Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+            Math.cos(_deg2rad(lat1)) * Math.cos(_deg2rad(lat2)) *
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const d = R * c;
         return d;
-    },
+    }
 
-    deg2rad(deg) {
+    // Funciones privadas
+    function _deg2rad(deg) {
         return deg * (Math.PI / 180);
-    },
+    }
 
     /**
      * Formatea una fecha
      */
-    formatDate(dateString) {
+    function formatDate(dateString) {
         const date = new Date(dateString);
         const now = new Date();
         const diff = now - date;
@@ -164,22 +167,37 @@ const Utils = {
             month: 'short',
             day: 'numeric'
         });
-    },
+    }
 
     /**
      * Detecta si está en móvil
      */
-    isMobile() {
+    function isMobile() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    },
+    }
 
     /**
      * Abre WhatsApp con mensaje predefinido
      */
-    openWhatsApp(phone, message) {
+    function openWhatsApp(phone, message) {
         const cleanPhone = phone.replace(/\D/g, '');
         const encodedMessage = encodeURIComponent(message);
         const url = `https://wa.me/57${cleanPhone}?text=${encodedMessage}`;
         window.open(url, '_blank');
-    },
-};
+    }
+
+    // API Pública
+    return {
+        showToast: showToast,
+        showSpinner: showSpinner,
+        formatCoords: formatCoords,
+        validateForm: validateForm,
+        getFormData: getFormData,
+        resetForm: resetForm,
+        generateId: generateId,
+        calculateDistance: calculateDistance,
+        formatDate: formatDate,
+        isMobile: isMobile,
+        openWhatsApp: openWhatsApp
+    };
+})();

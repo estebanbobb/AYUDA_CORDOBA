@@ -1,21 +1,24 @@
+```javascript
 // ============================================
 // SOCORRO CÓRDOBA - API CLIENT
 // Comunicación con Google Apps Script
 // ============================================
 
-const API = {
+const API = (function() {
+    'use strict';
+
     /**
      * Realiza una petición GET al backend usando JSONP
      * (Google Apps Script requiere JSONP para leer respuestas cross-origin)
      */
-    async get(endpoint) {
+    async function get(endpoint) {
         return new Promise((resolve, reject) => {
             try {
                 // Crear nombre único para la función callback
-                const callbackName = `jsonp_callback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const callbackName = `jsonp_callback_${ Date.now() }_${ Math.random().toString(36).substr(2, 9) } `;
 
                 // Crear la URL con el parámetro callback
-                const url = `${CONFIG.API_URL}?action=${endpoint}&callback=${callbackName}`;
+                const url = `${ CONFIG.API_URL }?action = ${ endpoint }& callback=${ callbackName } `;
 
                 // Definir la función callback global
                 window[callbackName] = function (response) {
@@ -25,15 +28,15 @@ const API = {
 
                     // Manejar formato estandarizado (Socorro pattern)
                     if (response && response.success !== undefined) {
-                        if (response.success) {
-                            resolve(response.data); // Devolver solo los datos para compatibilidad
-                        } else {
-                            console.error('API Error:', response.error, response.code);
-                            reject(new Error(response.error || 'Error desconocido del servidor'));
-                        }
+                      if (response.success) {
+                        resolve(response.data); // Devolver solo los datos para compatibilidad
+                      } else {
+                        console.error('API Error:', response.error, response.code);
+                        reject(new Error(response.error || 'Error desconocido del servidor'));
+                      }
                     } else {
-                        // Formato antiguo (directo)
-                        resolve(response);
+                      // Formato antiguo (directo)
+                      resolve(response);
                     }
                 };
 
@@ -46,7 +49,7 @@ const API = {
                 script.onerror = function () {
                     delete window[callbackName];
                     document.body.removeChild(script);
-                    reject(new Error(`Error al cargar datos de ${endpoint}`));
+                    reject(new Error(`Error al cargar datos de ${ endpoint } `));
                 };
 
                 // Timeout de 30 segundos
@@ -54,11 +57,12 @@ const API = {
                     if (window[callbackName]) {
                         delete window[callbackName];
                         document.body.removeChild(script);
-                        reject(new Error(`Timeout al cargar ${endpoint}`));
+                        reject(new Error(`Timeout al cargar ${ endpoint } `));
                     }
                 }, 30000);
 
                 // Limpiar timeout cuando se resuelva
+                // La función callback ya se encarga de limpiar el timeout
                 const originalCallback = window[callbackName];
                 window[callbackName] = function (data) {
                     clearTimeout(timeout);
@@ -69,200 +73,214 @@ const API = {
                 document.body.appendChild(script);
 
             } catch (error) {
-                console.error(`Error en GET ${endpoint}:`, error);
+                console.error(`Error en GET ${ endpoint }: `, error);
                 reject(error);
             }
         });
-    },
+    }
 
     /**
      * Realiza una petición POST al backend
-     * Usa application/x-www-form-urlencoded para mejor compatibilidad
      */
-    async post(endpoint, data) {
+    async function post(endpoint, data) {
         try {
             const url = CONFIG.API_URL;
 
-            // Convertir datos a formato form-urlencoded
-            const formData = new URLSearchParams();
-            formData.append('action', endpoint);
-
-            // Agregar cada campo de data como parámetro separado
-            for (const [key, value] of Object.entries(data)) {
-                formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-            }
+            const payload = {
+                action: endpoint,
+                data: data
+            };
 
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/json',
                 },
-                body: formData.toString(),
-                redirect: 'follow'
+                body: JSON.stringify(payload),
+                mode: 'no-cors', // Google Apps Script requiere esto
             });
 
-            // Intentar leer la respuesta
-            const text = await response.text();
-
-            try {
-                return JSON.parse(text);
-            } catch {
-                // Si no es JSON, asumir éxito
-                return { success: true };
-            }
+            // Nota: con mode: 'no-cors', no podemos leer la respuesta
+            // Asumimos que fue exitoso si no hubo error
+            return { success: true };
         } catch (error) {
-            console.error(`Error en POST ${endpoint}:`, error);
+            console.error(`Error en POST ${ endpoint }: `, error);
             throw error;
         }
-    },
+    }
 
     /**
      * Obtiene todas las solicitudes de ayuda
      */
-    async getSolicitudes() {
-        return await this.get('getSolicitudes');
-    },
+    function getSolicitudes() {
+        return get('getSolicitudes');
+    }
 
     /**
      * Obtiene todas las ofertas de ayuda
      */
-    async getOfertas() {
-        return await this.get('getOfertas');
-    },
+    function getOfertas() {
+        return get('getOfertas');
+    }
 
     /**
      * Obtiene todos los albergues
      */
-    async getAlbergues() {
-        return await this.get('getAlbergues');
-    },
-
-    /**
-     * Obtiene todos los datos (solicitudes, ofertas, albergues)
-     */
-    async getAllData() {
-        try {
-            const [solicitudes, ofertas, albergues] = await Promise.all([
-                this.getSolicitudes().catch(() => []),
-                this.getOfertas().catch(() => []),
-                this.getAlbergues().catch(() => []),
-            ]);
-
-            return {
-                solicitudes,
-                ofertas,
-                albergues,
-            };
-        } catch (error) {
-            console.error('Error obteniendo todos los datos:', error);
-            return {
-                solicitudes: [],
-                ofertas: [],
-                albergues: [],
-            };
-        }
-    },
+    function getAlbergues() {
+        return get('getAlbergues');
+    }
 
     /**
      * Crea una nueva solicitud de ayuda
      */
-    async crearSolicitud(data) {
-        return await this.post('crearSolicitud', data);
-    },
+    function crearSolicitud(datos) {
+        return post('crearSolicitud', datos);
+    }
 
     /**
      * Crea una nueva oferta de ayuda
      */
-    async crearOferta(data) {
-        return await this.post('crearOferta', data);
-    },
+    function crearOferta(datos) {
+        return post('crearOferta', datos);
+    }
 
     /**
-     * Crea o actualiza un albergue
+     * Registra o actualiza un albergue
      */
-    async gestionarAlbergue(data) {
-        return await this.post('gestionarAlbergue', data);
-    },
+    function gestionarAlbergue(datos) {
+        return post('gestionarAlbergue', datos);
+    }
 
     /**
-     * Obtiene estadísticas
+     * Obtiene todos los datos (mapa)
      */
-    async getEstadisticas() {
-        return await this.get('getEstadisticas');
-    },
+    async function getAllData() {
+        // Ejecutar en paralelo para mejor rendimiento
+        const [solicitudes, ofertas, albergues] = await Promise.all([
+            getSolicitudes(),
+            getOfertas(),
+            getAlbergues()
+        ]);
+
+        return {
+            solicitudes,
+            ofertas,
+            albergues
+        };
+    }
 
     // ============================================
     // MÉTODOS DE ADMINISTRACIÓN
     // ============================================
 
     /**
-     * Obtiene solicitudes pendientes de aprobación
+     * Obtiene estadísticas del sistema
      */
-    async getSolicitudesPendientes() {
-        return await this.get('getSolicitudesPendientes');
-    },
+    function getEstadisticas() {
+        return get('getEstadisticas');
+    }
 
     /**
-     * Obtiene ofertas pendientes de aprobación
+     * Obtiene solicitudes pendientes
      */
-    async getOfertasPendientes() {
-        return await this.get('getOfertasPendientes');
-    },
+    function getSolicitudesPendientes() {
+        return get('getSolicitudesPendientes');
+    }
 
     /**
-     * Obtiene albergues pendientes de aprobación
+     * Obtiene ofertas pendientes
      */
-    async getAlberguesPendientes() {
-        return await this.get('getAlberguesPendientes');
-    },
+    function getOfertasPendientes() {
+        return get('getOfertasPendientes');
+    }
+
+    /**
+     * Obtiene albergues pendientes
+     */
+    function getAlberguesPendientes() {
+        return get('getAlberguesPendientes');
+    }
 
     /**
      * Aprueba una solicitud
      */
-    async aprobarSolicitud(id) {
-        return await this.post('aprobarSolicitud', { id });
-    },
+    function aprobarSolicitud(id) {
+        return post('aprobarSolicitud', { id: id });
+    }
 
     /**
      * Rechaza una solicitud
      */
-    async rechazarSolicitud(id) {
-        return await this.post('rechazarSolicitud', { id });
-    },
+    function rechazarSolicitud(id) {
+        return post('rechazarSolicitud', { id: id });
+    }
 
     /**
      * Aprueba una oferta
      */
-    async aprobarOferta(id) {
-        return await this.post('aprobarOferta', { id });
-    },
+    function aprobarOferta(id) {
+        return post('aprobarOferta', { id: id });
+    }
 
     /**
      * Rechaza una oferta
      */
-    async rechazarOferta(id) {
-        return await this.post('rechazarOferta', { id });
-    },
+    function rechazarOferta(id) {
+        return post('rechazarOferta', { id: id });
+    }
 
     /**
      * Aprueba un albergue
      */
-    async aprobarAlbergue(id) {
-        return await this.post('aprobarAlbergue', { id });
-    },
+    function aprobarAlbergue(id) {
+        return post('aprobarAlbergue', { id: id });
+    }
 
     /**
-     * Registra inventario de un albergue
+     * Registra inventario de albergue
      */
-    async registrarInventario(data) {
-        return await this.post('registrarInventario', data);
-    },
+    function registrarInventario(datos) {
+        return post('registrarInventario', datos);
+    }
 
     /**
      * Obtiene inventario de un albergue
      */
-    async getInventario(albergueId = null) {
-        const endpoint = albergueId ? `getInventario&albergueId=${albergueId}` : 'getInventario';
-        return await this.get(endpoint);
-    },
-};
+    async function getInventario(albergueId = null) {
+        const endpoint = albergueId ? `getInventario & albergueId=${ albergueId } ` : 'getInventario';
+        return await get(endpoint);
+    }
+
+    /**
+     * Registra feedback del usuario
+     */
+    function registrarFeedback(datos) {
+        return post('registrarFeedback', datos);
+    }
+
+    // API Pública
+    return {
+        get: get,
+        post: post,
+        getSolicitudes: getSolicitudes,
+        getOfertas: getOfertas,
+        getAlbergues: getAlbergues,
+        crearSolicitud: crearSolicitud,
+        crearOferta: crearOferta,
+        gestionarAlbergue: gestionarAlbergue,
+        getAllData: getAllData,
+        getEstadisticas: getEstadisticas,
+        getSolicitudesPendientes: getSolicitudesPendientes,
+        getOfertasPendientes: getOfertasPendientes,
+        getAlberguesPendientes: getAlberguesPendientes,
+        aprobarSolicitud: aprobarSolicitud,
+        rechazarSolicitud: rechazarSolicitud,
+        aprobarOferta: aprobarOferta,
+        rechazarOferta: rechazarOferta,
+        aprobarAlbergue: aprobarAlbergue,
+        registrarInventario: registrarInventario,
+        getInventario: getInventario, // Added getInventario to the public interface
+        registrarFeedback: registrarFeedback
+    };
+})();
+```

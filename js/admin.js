@@ -2,37 +2,40 @@
 // SOCORRO CÓRDOBA - PANEL DE ADMINISTRACIÓN
 // ============================================
 
-const Admin = {
-    currentTab: 'solicitudes',
+var Admin = (function () {
+    'use strict';
+
+    // Estado privado
+    let currentTab = 'solicitudes';
 
     /**
      * Inicializa el panel de administración
      */
-    init() {
-        this.setupLoginForm();
-        this.setupAdminTabs();
-        this.setupLogoutButton();
+    function init() {
+        _setupLoginForm();
+        _setupAdminTabs();
+        _setupLogoutButton();
 
         console.log('✅ Panel de administración inicializado');
-    },
+    }
 
     /**
-     * Configura el formulario de login
+     * Configura el formulario de login (Privado)
      */
-    setupLoginForm() {
+    function _setupLoginForm() {
         const form = document.getElementById('admin-login-form');
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                await this.handleLogin(e);
+                await _handleLogin(e);
             });
         }
-    },
+    }
 
     /**
-     * Maneja el login
+     * Maneja el login (Privado)
      */
-    async handleLogin(e) {
+    async function _handleLogin(e) {
         const password = document.getElementById('admin-password').value;
 
         Utils.showSpinner(true);
@@ -43,47 +46,47 @@ const Admin = {
 
         if (result.success) {
             Utils.showToast('✅ Sesión iniciada correctamente', 'success');
-            this.showDashboard();
-            await this.loadDashboardData();
+            showDashboard();
+            await loadDashboardData();
         } else {
             Utils.showToast('❌ Contraseña incorrecta', 'error');
             document.getElementById('admin-password').value = '';
         }
-    },
+    }
 
     /**
      * Muestra el dashboard
      */
-    showDashboard() {
+    function showDashboard() {
         document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-dashboard').style.display = 'block';
-    },
+    }
 
     /**
      * Muestra el login
      */
-    showLogin() {
+    function showLogin() {
         document.getElementById('admin-login').style.display = 'block';
         document.getElementById('admin-dashboard').style.display = 'none';
-    },
+    }
 
     /**
-     * Configura las pestañas del admin
+     * Configura las pestañas del admin (Privado)
      */
-    setupAdminTabs() {
+    function _setupAdminTabs() {
         const tabs = document.querySelectorAll('.admin-tab');
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 const tabName = tab.getAttribute('data-tab');
-                this.switchTab(tabName);
+                _switchTab(tabName);
             });
         });
-    },
+    }
 
     /**
-     * Cambia de pestaña
+     * Cambia de pestaña (Privado)
      */
-    switchTab(tabName) {
+    function _switchTab(tabName) {
         // Actualizar tabs activos
         document.querySelectorAll('.admin-tab').forEach(tab => {
             tab.classList.remove('active');
@@ -96,16 +99,16 @@ const Admin = {
         });
         document.getElementById(`admin-${tabName}`).classList.add('active');
 
-        this.currentTab = tabName;
+        currentTab = tabName;
 
         // Cargar datos de la pestaña
-        this.loadTabData(tabName);
-    },
+        _loadTabData(tabName);
+    }
 
     /**
      * Carga datos del dashboard
      */
-    async loadDashboardData() {
+    async function loadDashboardData() {
         try {
             const [solicitudesPendientes, ofertasPendientes, alberguesPendientes] = await Promise.all([
                 API.getSolicitudesPendientes(),
@@ -119,33 +122,33 @@ const Admin = {
             document.getElementById('count-albergues').textContent = alberguesPendientes.length;
 
             // Cargar primera pestaña
-            this.switchTab('solicitudes');
+            _switchTab('solicitudes');
 
         } catch (error) {
             console.error('Error cargando dashboard:', error);
             Utils.showToast('❌ Error al cargar datos', 'error');
         }
-    },
+    }
 
     /**
-     * Carga datos de una pestaña específica
+     * Carga datos de una pestaña específica (Privado)
      */
-    async loadTabData(tabName) {
+    async function _loadTabData(tabName) {
         Utils.showSpinner(true);
 
         try {
             switch (tabName) {
                 case 'solicitudes':
-                    await this.loadSolicitudesPendientes();
+                    await _loadSolicitudesPendientes();
                     break;
                 case 'ofertas':
-                    await this.loadOfertasPendientes();
+                    await _loadOfertasPendientes();
                     break;
                 case 'albergues':
-                    await this.loadAlberguesPendientes();
+                    await _loadAlberguesPendientes();
                     break;
                 case 'inventario':
-                    await this.loadInventarioForm();
+                    await _loadInventarioForm();
                     break;
             }
         } catch (error) {
@@ -154,12 +157,12 @@ const Admin = {
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
-     * Carga solicitudes pendientes
+     * Carga solicitudes pendientes (Privado)
      */
-    async loadSolicitudesPendientes() {
+    async function _loadSolicitudesPendientes() {
         const solicitudes = await API.getSolicitudesPendientes();
         const container = document.getElementById('solicitudes-pendientes-list');
 
@@ -180,7 +183,7 @@ const Admin = {
           <p><strong>🆘 Necesita:</strong> ${s.tipoAyuda}</p>
           <p><strong>👥 Personas:</strong> ${s.personas}</p>
           ${s.notas ? `<p><strong>📝 Notas:</strong> ${s.notas}</p>` : ''}
-          <p><strong>📌 Coordenadas:</strong> ${s.lat}, ${s.lng}</p>
+          <p><strong>📌 Coordenadas:</strong> ${Utils.formatCoords(s.lat, s.lng)}</p>
         </div>
         <div class="pending-actions">
           <button class="btn btn-success" onclick="Admin.aprobarSolicitud('${s.id}')">
@@ -192,12 +195,12 @@ const Admin = {
         </div>
       </div>
     `).join('');
-    },
+    }
 
     /**
-     * Carga ofertas pendientes
+     * Carga ofertas pendientes (Privado)
      */
-    async loadOfertasPendientes() {
+    async function _loadOfertasPendientes() {
         const ofertas = await API.getOfertasPendientes();
         const container = document.getElementById('ofertas-pendientes-list');
 
@@ -217,7 +220,7 @@ const Admin = {
           <p><strong>💚 Ofrece:</strong> ${o.tipoAyuda}</p>
           <p><strong>📦 Cantidad:</strong> ${o.cantidad || 'No especificado'}</p>
           <p><strong>📍 Ubicación:</strong> ${o.barrio || 'No especificado'}</p>
-          ${o.lat && o.lng ? `<p><strong>📌 Coordenadas:</strong> ${o.lat}, ${o.lng}</p>` : ''}
+          ${o.lat && o.lng ? `<p><strong>📌 Coordenadas:</strong> ${Utils.formatCoords(o.lat, o.lng)}</p>` : ''}
         </div>
         <div class="pending-actions">
           <button class="btn btn-success" onclick="Admin.aprobarOferta('${o.id}')">
@@ -229,12 +232,12 @@ const Admin = {
         </div>
       </div>
     `).join('');
-    },
+    }
 
     /**
-     * Carga albergues pendientes
+     * Carga albergues pendientes (Privado)
      */
-    async loadAlberguesPendientes() {
+    async function _loadAlberguesPendientes() {
         const albergues = await API.getAlberguesPendientes();
         const container = document.getElementById('albergues-pendientes-list');
 
@@ -253,7 +256,7 @@ const Admin = {
           <p><strong>👥 Capacidad:</strong> ${a.capacidadTotal} personas</p>
           <p><strong>📞 Contacto:</strong> ${a.contacto || 'No especificado'}</p>
           ${a.recursos ? `<p><strong>📦 Recursos:</strong> ${a.recursos}</p>` : ''}
-          ${a.lat && a.lng ? `<p><strong>📌 Coordenadas:</strong> ${a.lat}, ${a.lng}</p>` : ''}
+          ${a.lat && a.lng ? `<p><strong>📌 Coordenadas:</strong> ${Utils.formatCoords(a.lat, a.lng)}</p>` : ''}
         </div>
         <div class="pending-actions">
           <button class="btn btn-success" onclick="Admin.aprobarAlbergue('${a.id}')">
@@ -262,12 +265,12 @@ const Admin = {
         </div>
       </div>
     `).join('');
-    },
+    }
 
     /**
-     * Carga formulario de inventario
+     * Carga formulario de inventario (Privado)
      */
-    async loadInventarioForm() {
+    async function _loadInventarioForm() {
         const albergues = await API.getAlbergues();
         const select = document.getElementById('inventario-albergue');
 
@@ -278,12 +281,23 @@ const Admin = {
 
         select.innerHTML = '<option value="">Selecciona un albergue</option>' +
             albergues.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
-    },
+
+        // Agregar listener para el submit del inventario (si no existe ya)
+        const form = document.getElementById('form-inventario');
+        // Remover listeners anteriores para evitar duplicados (hack simple: clonar nodo)
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await registrarInventario(e); // Llamar a la función pública/interna (en este caso haremos una interna que se pueda llamar)
+        });
+    }
 
     /**
      * Aprueba una solicitud
      */
-    async aprobarSolicitud(id) {
+    async function aprobarSolicitud(id) {
         if (!confirm('¿Aprobar esta solicitud?')) return;
 
         Utils.showSpinner(true);
@@ -291,25 +305,23 @@ const Admin = {
         try {
             await API.aprobarSolicitud(id);
             Utils.showToast('✅ Solicitud aprobada', 'success');
-            await this.loadSolicitudesPendientes();
-            await this.loadDashboardData();
+            await _loadSolicitudesPendientes();
+            await loadDashboardData();
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
         } catch (error) {
             console.error('Error aprobando solicitud:', error);
             Utils.showToast('❌ Error al aprobar', 'error');
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
      * Rechaza una solicitud
      */
-    async rechazarSolicitud(id) {
+    async function rechazarSolicitud(id) {
         if (!confirm('¿Rechazar esta solicitud?')) return;
 
         Utils.showSpinner(true);
@@ -317,20 +329,20 @@ const Admin = {
         try {
             await API.rechazarSolicitud(id);
             Utils.showToast('✅ Solicitud rechazada', 'success');
-            await this.loadSolicitudesPendientes();
-            await this.loadDashboardData();
+            await _loadSolicitudesPendientes();
+            await loadDashboardData();
         } catch (error) {
             console.error('Error rechazando solicitud:', error);
             Utils.showToast('❌ Error al rechazar', 'error');
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
      * Aprueba una oferta
      */
-    async aprobarOferta(id) {
+    async function aprobarOferta(id) {
         if (!confirm('¿Aprobar esta oferta?')) return;
 
         Utils.showSpinner(true);
@@ -338,25 +350,23 @@ const Admin = {
         try {
             await API.aprobarOferta(id);
             Utils.showToast('✅ Oferta aprobada', 'success');
-            await this.loadOfertasPendientes();
-            await this.loadDashboardData();
+            await _loadOfertasPendientes();
+            await loadDashboardData();
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
         } catch (error) {
             console.error('Error aprobando oferta:', error);
             Utils.showToast('❌ Error al aprobar', 'error');
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
      * Rechaza una oferta
      */
-    async rechazarOferta(id) {
+    async function rechazarOferta(id) {
         if (!confirm('¿Rechazar esta oferta?')) return;
 
         Utils.showSpinner(true);
@@ -364,20 +374,20 @@ const Admin = {
         try {
             await API.rechazarOferta(id);
             Utils.showToast('✅ Oferta rechazada', 'success');
-            await this.loadOfertasPendientes();
-            await this.loadDashboardData();
+            await _loadOfertasPendientes();
+            await loadDashboardData();
         } catch (error) {
             console.error('Error rechazando oferta:', error);
             Utils.showToast('❌ Error al rechazar', 'error');
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
      * Aprueba un albergue
      */
-    async aprobarAlbergue(id) {
+    async function aprobarAlbergue(id) {
         if (!confirm('¿Aprobar este albergue?')) return;
 
         Utils.showSpinner(true);
@@ -385,26 +395,28 @@ const Admin = {
         try {
             await API.aprobarAlbergue(id);
             Utils.showToast('✅ Albergue aprobado', 'success');
-            await this.loadAlberguesPendientes();
-            await this.loadDashboardData();
+            await _loadAlberguesPendientes();
+            await loadDashboardData();
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
         } catch (error) {
             console.error('Error aprobando albergue:', error);
             Utils.showToast('❌ Error al aprobar', 'error');
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
      * Registra inventario
      */
-    async registrarInventario(e) {
-        e.preventDefault();
+    async function registrarInventario(e) {
+        // Nota: Si se llama desde el evento submit, e es el evento.
+        // Si se llama manualmente podría ser diferente, pero aquí asumimos evento.
+        // Si ya fue prevenido arriba, no importa.
+        // En _loadInventarioForm ya prevenimos default. AQUÍ NO LO HACEMOS para permitir flexibilidad, 
+        // pero la llamada desde _loadInventarioForm ya hizo preventDefault.
 
         const form = e.target;
         const data = {
@@ -435,12 +447,12 @@ const Admin = {
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
-     * Configura botón de logout
+     * Configura botón de logout (Privado)
      */
-    setupLogoutButton() {
+    function _setupLogoutButton() {
         const btn = document.getElementById('btn-logout');
         if (btn) {
             btn.addEventListener('click', () => {
@@ -449,5 +461,20 @@ const Admin = {
                 }
             });
         }
-    },
-};
+    }
+
+    // API Pública
+    return {
+        init: init,
+        showDashboard: showDashboard,
+        showLogin: showLogin,
+        loadDashboardData: loadDashboardData,
+        // Métodos llamados desde el HTML dinámico
+        aprobarSolicitud: aprobarSolicitud,
+        rechazarSolicitud: rechazarSolicitud,
+        aprobarOferta: aprobarOferta,
+        rechazarOferta: rechazarOferta,
+        aprobarAlbergue: aprobarAlbergue,
+        registrarInventario: registrarInventario
+    };
+})();

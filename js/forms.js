@@ -2,94 +2,96 @@
 // SOCORRO CÓRDOBA - GESTIÓN DE FORMULARIOS
 // ============================================
 
-const Forms = {
+const Forms = (function () {
+    'use strict';
+
     /**
      * Inicializa los event listeners de los formularios
      */
-    init() {
+    function init() {
         // Formulario "Necesito Ayuda"
         const formNecesito = document.getElementById('form-necesito');
         if (formNecesito) {
-            formNecesito.addEventListener('submit', (e) => this.handleNecesitoSubmit(e));
+            formNecesito.addEventListener('submit', (e) => _handleNecesitoSubmit(e));
         }
 
         // Formulario "Tengo Ayuda"
         const formTengo = document.getElementById('form-tengo');
         if (formTengo) {
-            formTengo.addEventListener('submit', (e) => this.handleTengoSubmit(e));
+            formTengo.addEventListener('submit', (e) => _handleTengoSubmit(e));
         }
 
         // Botones de geolocalización - Necesito Ayuda
         const btnUseGPS = document.getElementById('btn-use-gps');
         if (btnUseGPS) {
-            btnUseGPS.addEventListener('click', () => this.handleGPSClick('necesito'));
+            btnUseGPS.addEventListener('click', () => _handleGPSClick('necesito'));
         }
 
         const btnSelectMap = document.getElementById('btn-select-map');
         if (btnSelectMap) {
-            btnSelectMap.addEventListener('click', () => this.handleMapSelectClick('necesito'));
+            btnSelectMap.addEventListener('click', () => _handleMapSelectClick('necesito'));
         }
 
         // Botones de geolocalización - Tengo Ayuda
         const btnUseGPSTengo = document.getElementById('btn-use-gps-tengo');
         if (btnUseGPSTengo) {
-            btnUseGPSTengo.addEventListener('click', () => this.handleGPSClick('tengo'));
+            btnUseGPSTengo.addEventListener('click', () => _handleGPSClick('tengo'));
         }
 
         const btnSelectMapTengo = document.getElementById('btn-select-map-tengo');
         if (btnSelectMapTengo) {
-            btnSelectMapTengo.addEventListener('click', () => this.handleMapSelectClick('tengo'));
+            btnSelectMapTengo.addEventListener('click', () => _handleMapSelectClick('tengo'));
         }
 
         // Formulario de Albergue (Modal)
         const btnAddAlbergue = document.getElementById('btn-add-albergue');
         if (btnAddAlbergue) {
-            btnAddAlbergue.addEventListener('click', () => this.showAlbergueModal());
+            btnAddAlbergue.addEventListener('click', () => showAlbergueModal());
         }
 
         const btnCloseModal = document.getElementById('btn-close-modal');
         if (btnCloseModal) {
-            btnCloseModal.addEventListener('click', () => this.hideAlbergueModal());
+            btnCloseModal.addEventListener('click', () => hideAlbergueModal());
         }
 
         const btnCancelAlbergue = document.getElementById('btn-cancel-albergue');
         if (btnCancelAlbergue) {
-            btnCancelAlbergue.addEventListener('click', () => this.hideAlbergueModal());
+            btnCancelAlbergue.addEventListener('click', () => hideAlbergueModal());
         }
 
         const formAlbergue = document.getElementById('form-albergue');
         if (formAlbergue) {
-            formAlbergue.addEventListener('submit', (e) => this.handleAlbergueSubmit(e));
+            formAlbergue.addEventListener('submit', (e) => _handleAlbergueSubmit(e));
         }
 
         // Botones GPS y mapa para albergue
         const btnUseGPSAlbergue = document.getElementById('btn-use-gps-albergue');
         if (btnUseGPSAlbergue) {
-            btnUseGPSAlbergue.addEventListener('click', () => this.handleGPSClick('albergue'));
+            btnUseGPSAlbergue.addEventListener('click', () => _handleGPSClick('albergue'));
         }
 
         const btnSelectMapAlbergue = document.getElementById('btn-select-map-albergue');
         if (btnSelectMapAlbergue) {
-            btnSelectMapAlbergue.addEventListener('click', () => this.handleMapSelectClick('albergue'));
+            btnSelectMapAlbergue.addEventListener('click', () => _handleMapSelectClick('albergue'));
         }
 
         console.log('✅ Formularios inicializados');
-    },
+    }
 
     /**
      * Muestra el modal de registro de albergue
      */
-    showAlbergueModal() {
+    function showAlbergueModal() {
         const modal = document.getElementById('modal-albergue');
         if (modal) {
             modal.style.display = 'flex';
         }
-    },
+    }
 
     /**
      * Oculta el modal de registro de albergue
      */
-    hideAlbergueModal() {
+    function hideAlbergueModal() {
         const modal = document.getElementById('modal-albergue');
         if (modal) {
             modal.style.display = 'none';
@@ -99,56 +101,66 @@ const Forms = {
                 Utils.resetForm(form);
             }
         }
-    },
+    }
 
     /**
-     * Maneja el click en el botón de GPS
+     * Maneja el click en el botón de GPS (Privado)
      */
-    async handleGPSClick(formPrefix) {
+    async function _handleGPSClick(formPrefix) {
         try {
-            const coords = await Geolocation.getCurrentPosition();
-            await Geolocation.updateFormWithLocation(formPrefix, coords);
+            // Nota: Geolocation no ha sido refactorizado aún, asumo que está global o en otro archivo
+            // Si Geolocation no existe, esto fallará. Debería verificar si existe.
+            // Asumiré que existe por ahora, o usaré una implementación simple si falla.
+            if (typeof Geolocation !== 'undefined') {
+                const coords = await Geolocation.getCurrentPosition();
+                await Geolocation.updateFormWithLocation(formPrefix, coords);
+            } else {
+                console.error('Geolocation module not found');
+                Utils.showToast('Error: Módulo de geolocalización no encontrado', 'error');
+            }
         } catch (error) {
             console.error('Error obteniendo ubicación GPS:', error);
+            Utils.showToast(CONFIG.MESSAGES.ERROR.UBICACION_NO_DISPONIBLE, 'error');
         }
-    },
+    }
 
     /**
-     * Maneja el click en el botón de seleccionar en mapa
+     * Maneja el click en el botón de seleccionar en mapa (Privado)
      */
-    handleMapSelectClick(formPrefix) {
+    function _handleMapSelectClick(formPrefix) {
         // Cambiar a la vista del mapa
         window.location.hash = 'mapa';
 
         Utils.showToast('📍 Haz click en el mapa para seleccionar tu ubicación', 'info');
 
-        // Agregar listener temporal al mapa
-        if (MapManager.map) {
-            const onMapClick = async (e) => {
-                const coords = {
-                    lat: e.latlng.lat,
-                    lng: e.latlng.lng
-                };
-
-                await Geolocation.updateFormWithLocation(formPrefix, coords);
-
-                // Volver al formulario
-                window.location.hash = formPrefix;
-
-                // Remover listener
-                MapManager.map.off('click', onMapClick);
-
-                Utils.showToast('✅ Ubicación seleccionada', 'success');
+        // Agregar listener temporal al mapa usando el proxy 'on'
+        // Necesitamos una función que podamos referenciar para usar 'off'
+        const onMapClick = async (e) => {
+            const coords = {
+                lat: e.latlng.lat,
+                lng: e.latlng.lng
             };
 
-            MapManager.map.on('click', onMapClick);
-        }
-    },
+            if (typeof Geolocation !== 'undefined') {
+                await Geolocation.updateFormWithLocation(formPrefix, coords);
+            }
+
+            // Volver al formulario
+            window.location.hash = formPrefix;
+
+            // Remover listener usando el proxy 'off'
+            MapManager.off('click', onMapClick);
+
+            Utils.showToast('✅ Ubicación seleccionada', 'success');
+        };
+
+        MapManager.on('click', onMapClick);
+    }
 
     /**
-     * Maneja el envío del formulario "Necesito Ayuda"
+     * Maneja el envío del formulario "Necesito Ayuda" (Privado)
      */
-    async handleNecesitoSubmit(e) {
+    async function _handleNecesitoSubmit(e) {
         e.preventDefault();
 
         const form = e.target;
@@ -189,17 +201,19 @@ const Forms = {
                 Utils.showToast(CONFIG.MESSAGES.SUCCESS.SOLICITUD_ENVIADA, 'success');
             } else {
                 // Guardar offline
-                OfflineManager.saveSolicitud(formData);
-                Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                if (typeof OfflineManager !== 'undefined') {
+                    OfflineManager.saveSolicitud(formData);
+                    Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                } else {
+                    console.warn('OfflineManager no disponible');
+                }
             }
 
             // Limpiar formulario
             Utils.resetForm(form);
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
 
             // Cambiar a vista del mapa
             setTimeout(() => {
@@ -210,17 +224,19 @@ const Forms = {
             console.error('Error enviando solicitud:', error);
 
             // Guardar offline como fallback
-            OfflineManager.saveSolicitud(formData);
-            Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            if (typeof OfflineManager !== 'undefined') {
+                OfflineManager.saveSolicitud(formData);
+                Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            }
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
-     * Maneja el envío del formulario "Tengo Ayuda"
+     * Maneja el envío del formulario "Tengo Ayuda" (Privado)
      */
-    async handleTengoSubmit(e) {
+    async function _handleTengoSubmit(e) {
         e.preventDefault();
 
         const form = e.target;
@@ -252,17 +268,17 @@ const Forms = {
                 Utils.showToast(CONFIG.MESSAGES.SUCCESS.OFERTA_ENVIADA, 'success');
             } else {
                 // Guardar offline
-                OfflineManager.saveOferta(formData);
-                Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                if (typeof OfflineManager !== 'undefined') {
+                    OfflineManager.saveOferta(formData);
+                    Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                }
             }
 
             // Limpiar formulario
             Utils.resetForm(form);
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
 
             // Cambiar a vista del mapa
             setTimeout(() => {
@@ -273,17 +289,19 @@ const Forms = {
             console.error('Error enviando oferta:', error);
 
             // Guardar offline como fallback
-            OfflineManager.saveOferta(formData);
-            Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            if (typeof OfflineManager !== 'undefined') {
+                OfflineManager.saveOferta(formData);
+                Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            }
         } finally {
             Utils.showSpinner(false);
         }
-    },
+    }
 
     /**
-     * Maneja el envío del formulario de Albergue
+     * Maneja el envío del formulario de Albergue (Privado)
      */
-    async handleAlbergueSubmit(e) {
+    async function _handleAlbergueSubmit(e) {
         e.preventDefault();
 
         const form = e.target;
@@ -317,17 +335,17 @@ const Forms = {
                 Utils.showToast('✅ Albergue registrado. Esperando aprobación del administrador.', 'success');
             } else {
                 // Guardar offline
-                OfflineManager.saveAlbergue(formData);
-                Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                if (typeof OfflineManager !== 'undefined') {
+                    OfflineManager.saveAlbergue(formData);
+                    Utils.showToast(CONFIG.MESSAGES.ERROR.SIN_CONEXION, 'info');
+                }
             }
 
             // Cerrar modal
-            this.hideAlbergueModal();
+            hideAlbergueModal();
 
             // Actualizar mapa
-            if (MapManager.map) {
-                await MapManager.refresh();
-            }
+            await MapManager.refresh();
 
             // Actualizar lista de albergues
             if (typeof App !== 'undefined' && App.loadAlbergues) {
@@ -338,10 +356,19 @@ const Forms = {
             console.error('Error registrando albergue:', error);
 
             // Guardar offline como fallback
-            OfflineManager.saveAlbergue(formData);
-            Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            if (typeof OfflineManager !== 'undefined') {
+                OfflineManager.saveAlbergue(formData);
+                Utils.showToast('⚠️ Error al enviar. Datos guardados localmente.', 'info');
+            }
         } finally {
             Utils.showSpinner(false);
         }
-    },
-};
+    }
+
+    // API Pública
+    return {
+        init: init,
+        showAlbergueModal: showAlbergueModal,
+        hideAlbergueModal: hideAlbergueModal
+    };
+})();

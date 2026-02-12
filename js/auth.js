@@ -2,40 +2,39 @@
 // SOCORRO CÓRDOBA - AUTENTICACIÓN
 // ============================================
 
-const Auth = {
-    // Hash simple de la contraseña (SHA-256 básico)
-    // Contraseña por defecto: "admin2026"
-    // Para cambiarla, genera un nuevo hash en: https://emn178.github.io/online-tools/sha256.html
-    ADMIN_PASSWORD_HASH: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // "admin"
+const Auth = (function () {
+    'use strict';
 
-    SESSION_KEY: 'socorro_admin_session',
-    SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 horas
+    // Constantes privadas
+    const ADMIN_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // "admin"
+    const SESSION_KEY = 'socorro_admin_session';
+    const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 horas
 
     /**
      * Genera un hash simple de una cadena
      */
-    async simpleHash(str) {
+    async function _simpleHash(str) {
         const encoder = new TextEncoder();
         const data = encoder.encode(str);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         return hashHex;
-    },
+    }
 
     /**
      * Verifica si la contraseña es correcta
      */
-    async verificarPassword(password) {
-        const hash = await this.simpleHash(password);
-        return hash === this.ADMIN_PASSWORD_HASH;
-    },
+    async function _verificarPassword(password) {
+        const hash = await _simpleHash(password);
+        return hash === ADMIN_PASSWORD_HASH;
+    }
 
     /**
      * Inicia sesión de administrador
      */
-    async login(password) {
-        const isValid = await this.verificarPassword(password);
+    async function login(password) {
+        const isValid = await _verificarPassword(password);
 
         if (!isValid) {
             return { success: false, error: 'Contraseña incorrecta' };
@@ -45,28 +44,28 @@ const Auth = {
         const session = {
             authenticated: true,
             timestamp: Date.now(),
-            expires: Date.now() + this.SESSION_DURATION
+            expires: Date.now() + SESSION_DURATION
         };
 
-        localStorage.setItem(this.SESSION_KEY, JSON.stringify(session));
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 
         return { success: true };
-    },
+    }
 
     /**
      * Cierra sesión
      */
-    logout() {
-        localStorage.removeItem(this.SESSION_KEY);
+    function logout() {
+        localStorage.removeItem(SESSION_KEY);
         window.location.hash = 'mapa';
-    },
+    }
 
     /**
      * Verifica si hay una sesión activa
      */
-    isAuthenticated() {
+    function isAuthenticated() {
         try {
-            const sessionStr = localStorage.getItem(this.SESSION_KEY);
+            const sessionStr = localStorage.getItem(SESSION_KEY);
 
             if (!sessionStr) return false;
 
@@ -74,7 +73,7 @@ const Auth = {
 
             // Verificar si la sesión expiró
             if (session.expires < Date.now()) {
-                this.logout();
+                logout();
                 return false;
             }
 
@@ -83,16 +82,24 @@ const Auth = {
             console.error('Error verificando autenticación:', error);
             return false;
         }
-    },
+    }
 
     /**
      * Requiere autenticación (redirige si no está autenticado)
      */
-    requireAuth() {
-        if (!this.isAuthenticated()) {
+    function requireAuth() {
+        if (!isAuthenticated()) {
             window.location.hash = 'admin';
             return false;
         }
         return true;
-    },
-};
+    }
+
+    // API Pública
+    return {
+        login: login,
+        logout: logout,
+        isAuthenticated: isAuthenticated,
+        requireAuth: requireAuth
+    };
+})();

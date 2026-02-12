@@ -2,36 +2,55 @@
 // SOCORRO CÓRDOBA - GESTIÓN DEL MAPA
 // ============================================
 
-const MapManager = {
-    map: null,
-    markers: {
+const MapManager = (function () {
+    'use strict';
+
+    // Variables privadas
+    let map = null;
+    let markers = {
         solicitudes: null,
         ofertas: null,
         albergues: null,
         userLocation: null,
-    },
-    markerClusters: {
+    };
+    let markerClusters = {
         solicitudes: null,
         ofertas: null,
         albergues: null,
-    },
+    };
 
     /**
      * Inicializa el mapa
      */
-    init() {
+    function init() {
+        if (map) return; // Ya inicializado
+
         // Crear mapa centrado en Montería
-        this.map = L.map('map').setView(CONFIG.MAP.CENTER, CONFIG.MAP.ZOOM);
+        map = L.map('map').setView(CONFIG.MAP.CENTER, CONFIG.MAP.ZOOM);
 
         // Agregar capa de tiles
         L.tileLayer(CONFIG.MAP.TILE_LAYER, {
             attribution: CONFIG.MAP.TILE_ATTRIBUTION,
             minZoom: CONFIG.MAP.MIN_ZOOM,
             maxZoom: CONFIG.MAP.MAX_ZOOM,
-        }).addTo(this.map);
+        }).addTo(map);
 
         // Inicializar clusters
-        this.markerClusters.solicitudes = L.markerClusterGroup({
+        _initClusters();
+
+        // Agregar clusters al mapa
+        map.addLayer(markerClusters.solicitudes);
+        map.addLayer(markerClusters.ofertas);
+        map.addLayer(markerClusters.albergues);
+
+        console.log('✅ Mapa inicializado');
+    }
+
+    /**
+     * Inicializa los grupos de clusters (Privado)
+     */
+    function _initClusters() {
+        markerClusters.solicitudes = L.markerClusterGroup({
             iconCreateFunction: (cluster) => {
                 return L.divIcon({
                     html: `<div class="marker-cluster marker-cluster-need">${cluster.getChildCount()}</div>`,
@@ -41,7 +60,7 @@ const MapManager = {
             }
         });
 
-        this.markerClusters.ofertas = L.markerClusterGroup({
+        markerClusters.ofertas = L.markerClusterGroup({
             iconCreateFunction: (cluster) => {
                 return L.divIcon({
                     html: `<div class="marker-cluster marker-cluster-offer">${cluster.getChildCount()}</div>`,
@@ -51,7 +70,7 @@ const MapManager = {
             }
         });
 
-        this.markerClusters.albergues = L.markerClusterGroup({
+        markerClusters.albergues = L.markerClusterGroup({
             iconCreateFunction: (cluster) => {
                 return L.divIcon({
                     html: `<div class="marker-cluster marker-cluster-shelter">${cluster.getChildCount()}</div>`,
@@ -60,19 +79,12 @@ const MapManager = {
                 });
             }
         });
-
-        // Agregar clusters al mapa
-        this.map.addLayer(this.markerClusters.solicitudes);
-        this.map.addLayer(this.markerClusters.ofertas);
-        this.map.addLayer(this.markerClusters.albergues);
-
-        console.log('✅ Mapa inicializado');
-    },
+    }
 
     /**
-     * Crea un icono personalizado
+     * Crea un icono personalizado (Privado)
      */
-    createCustomIcon(emoji, color) {
+    function _createCustomIcon(emoji, color) {
         return L.divIcon({
             html: `<div style="background: ${color}; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 3px solid white;">${emoji}</div>`,
             className: 'custom-marker',
@@ -80,69 +92,69 @@ const MapManager = {
             iconAnchor: [18, 18],
             popupAnchor: [0, -18]
         });
-    },
+    }
 
     /**
      * Agrega marcadores de solicitudes de ayuda
      */
-    addSolicitudes(solicitudes) {
+    function addSolicitudes(solicitudes) {
         // Limpiar marcadores anteriores
-        this.markerClusters.solicitudes.clearLayers();
+        markerClusters.solicitudes.clearLayers();
 
         solicitudes.forEach(solicitud => {
             if (!solicitud.lat || !solicitud.lng) return;
 
-            const icon = this.createCustomIcon('🆘', '#E53E3E');
+            const icon = _createCustomIcon('🆘', '#E53E3E');
 
             const marker = L.marker([solicitud.lat, solicitud.lng], { icon })
-                .bindPopup(this.createSolicitudPopup(solicitud));
+                .bindPopup(_createSolicitudPopup(solicitud));
 
-            this.markerClusters.solicitudes.addLayer(marker);
+            markerClusters.solicitudes.addLayer(marker);
         });
-    },
+    }
 
     /**
      * Agrega marcadores de ofertas de ayuda
      */
-    addOfertas(ofertas) {
+    function addOfertas(ofertas) {
         // Limpiar marcadores anteriores
-        this.markerClusters.ofertas.clearLayers();
+        markerClusters.ofertas.clearLayers();
 
         ofertas.forEach(oferta => {
             if (!oferta.lat || !oferta.lng) return;
 
-            const icon = this.createCustomIcon('💚', '#38A169');
+            const icon = _createCustomIcon('💚', '#38A169');
 
             const marker = L.marker([oferta.lat, oferta.lng], { icon })
-                .bindPopup(this.createOfertaPopup(oferta));
+                .bindPopup(_createOfertaPopup(oferta));
 
-            this.markerClusters.ofertas.addLayer(marker);
+            markerClusters.ofertas.addLayer(marker);
         });
-    },
+    }
 
     /**
      * Agrega marcadores de albergues
      */
-    addAlbergues(albergues) {
+    function addAlbergues(albergues) {
         // Limpiar marcadores anteriores
-        this.markerClusters.albergues.clearLayers();
+        markerClusters.albergues.clearLayers();
 
         albergues.forEach(albergue => {
             if (!albergue.lat || !albergue.lng) return;
 
-            const icon = this.createCustomIcon('🏠', '#DD6B20');
+            const icon = _createCustomIcon('🏠', '#DD6B20');
 
             const marker = L.marker([albergue.lat, albergue.lng], { icon })
-                .bindPopup(this.createAlberguePopup(albergue));
+                .bindPopup(_createAlberguePopup(albergue));
 
-            this.markerClusters.albergues.addLayer(marker);
+            markerClusters.albergues.addLayer(marker);
         });
-    },
+    }
 
     /**
-     * Crea el contenido del popup para solicitudes
+     * Crea el contenido del popup para solicitudes (Privado)
      */
-    createSolicitudPopup(solicitud) {
+    function _createSolicitudPopup(solicitud) {
         const tipoAyuda = solicitud.tipoAyuda || 'No especificado';
         const personas = solicitud.personas || 1;
         const fecha = Utils.formatDate(solicitud.timestamp);
@@ -161,12 +173,12 @@ const MapManager = {
         </button>
       </div>
     `;
-    },
+    }
 
     /**
-     * Crea el contenido del popup para ofertas
+     * Crea el contenido del popup para ofertas (Privado)
      */
-    createOfertaPopup(oferta) {
+    function _createOfertaPopup(oferta) {
         const tipoAyuda = oferta.tipoAyuda || 'No especificado';
         const fecha = Utils.formatDate(oferta.timestamp);
 
@@ -183,12 +195,12 @@ const MapManager = {
         </button>
       </div>
     `;
-    },
+    }
 
     /**
-     * Crea el contenido del popup para albergues
+     * Crea el contenido del popup para albergues (Privado)
      */
-    createAlberguePopup(albergue) {
+    function _createAlberguePopup(albergue) {
         const capacidad = albergue.capacidadTotal || 0;
         const ocupacion = albergue.ocupacionActual || 0;
         const disponible = capacidad - ocupacion;
@@ -210,15 +222,17 @@ const MapManager = {
         ` : ''}
       </div>
     `;
-    },
+    }
 
     /**
      * Establece la ubicación del usuario en el mapa
      */
-    setUserLocation(lat, lng) {
+    function setUserLocation(lat, lng) {
+        if (!map) return;
+
         // Remover marcador anterior si existe
-        if (this.markers.userLocation) {
-            this.map.removeLayer(this.markers.userLocation);
+        if (markers.userLocation) {
+            map.removeLayer(markers.userLocation);
         }
 
         // Crear nuevo marcador
@@ -229,26 +243,26 @@ const MapManager = {
             iconAnchor: [10, 10]
         });
 
-        this.markers.userLocation = L.marker([lat, lng], { icon })
-            .addTo(this.map)
+        markers.userLocation = L.marker([lat, lng], { icon })
+            .addTo(map)
             .bindPopup('📍 Tu ubicación');
 
         // Centrar mapa en la ubicación
-        this.map.setView([lat, lng], 15);
-    },
+        map.setView([lat, lng], 15);
+    }
 
     /**
      * Refresca todos los datos del mapa
      */
-    async refresh() {
+    async function refresh() {
         Utils.showSpinner(true);
 
         try {
             const data = await API.getAllData();
 
-            if (data.solicitudes) this.addSolicitudes(data.solicitudes);
-            if (data.ofertas) this.addOfertas(data.ofertas);
-            if (data.albergues) this.addAlbergues(data.albergues);
+            if (data.solicitudes) addSolicitudes(data.solicitudes);
+            if (data.ofertas) addOfertas(data.ofertas);
+            if (data.albergues) addAlbergues(data.albergues);
 
             Utils.showToast('✅ Mapa actualizado', 'success');
         } catch (error) {
@@ -257,5 +271,44 @@ const MapManager = {
         } finally {
             Utils.showSpinner(false);
         }
-    },
-};
+    }
+
+    // ============================================
+    // MÉTODOS PROXY (PARA SEGURIDAD Y ENCAPSULAMIENTO)
+    // ============================================
+
+    function invalidateSize() {
+        if (map) map.invalidateSize();
+    }
+
+    function setView(center, zoom) {
+        if (map) map.setView(center, zoom);
+    }
+
+    function on(event, handler) {
+        if (map) map.on(event, handler);
+    }
+
+    function off(event, handler) {
+        if (map) map.off(event, handler);
+    }
+
+    // Obtener instancia (solo si es estrictamente necesario, tratar de evitar)
+    function getMapInstance() {
+        return map;
+    }
+
+    // API Pública
+    return {
+        init: init,
+        refresh: refresh,
+        setUserLocation: setUserLocation,
+        // Proxies
+        invalidateSize: invalidateSize,
+        setView: setView,
+        on: on,
+        off: off,
+        // Solo para emergencias o plugins complejos
+        get map() { return map; }
+    };
+})();

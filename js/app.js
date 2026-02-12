@@ -2,218 +2,168 @@
 // SOCORRO CÓRDOBA - APLICACIÓN PRINCIPAL
 // ============================================
 
-const App = {
-    currentView: 'mapa',
+var App = (function () {
+    'use strict';
+
+    // Estado privado
+    let currentView = 'mapa';
 
     /**
      * Inicializa la aplicación
      */
-    async init() {
+    async function init() {
         console.log('🚀 Iniciando Socorro Córdoba...');
 
         // Inicializar módulos
-        this.initNavigation();
-        this.initMapControls();
-        this.initAlbergues();
+        if (typeof MapManager !== 'undefined') MapManager.init();
+        if (typeof Forms !== 'undefined') Forms.init();
+        if (typeof Admin !== 'undefined') Admin.init();
 
-        // Inicializar gestor offline
-        OfflineManager.init();
+        // Configurar navegación
+        _setupNavigation();
 
-        // Inicializar formularios
-        Forms.init();
+        // Manejar rutas iniciales (hash)
+        _handleRoute();
 
-        // Inicializar panel admin
-        Admin.init();
+        // Escuchar cambios de hash
+        window.addEventListener('hashchange', _handleRoute);
 
-        // Inicializar mapa
-        MapManager.init();
-
-        // Cargar datos iniciales
-        await this.loadInitialData();
-
-        // Manejar hash inicial
-        this.handleHashChange();
-
-        console.log('✅ Socorro Córdoba iniciado correctamente');
-    },
-
-    /**
-     * Inicializa la navegación entre vistas
-     */
-    initNavigation() {
-        // Tabs
-        const tabs = document.querySelectorAll('.tab-item');
-        tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                e.preventDefault();
-                const hash = tab.getAttribute('href').substring(1);
-                window.location.hash = hash;
-            });
-        });
-
-        // Hash change
-        window.addEventListener('hashchange', () => this.handleHashChange());
-    },
-
-    /**
-     * Maneja cambios en el hash (navegación)
-     */
-    handleHashChange() {
-        const hash = window.location.hash.substring(1) || 'mapa';
-        this.showView(hash);
-    },
-
-    /**
-     * Muestra una vista específica
-     */
-    showView(viewName) {
-        // Ocultar todas las vistas
-        const views = document.querySelectorAll('.view');
-        views.forEach(view => view.classList.remove('active'));
-
-        // Mostrar vista seleccionada
-        const targetView = document.getElementById(`view-${viewName}`);
-        if (targetView) {
-            targetView.classList.add('active');
-            this.currentView = viewName;
-        }
-
-        // Actualizar tabs
-        const tabs = document.querySelectorAll('.tab-item');
-        tabs.forEach(tab => {
-            const tabHash = tab.getAttribute('href').substring(1);
-            if (tabHash === viewName) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
-
-        // Manejar vista de admin
-        if (viewName === 'admin') {
-            if (Auth.isAuthenticated()) {
-                Admin.showDashboard();
-                Admin.loadDashboardData();
-            } else {
-                Admin.showLogin();
-            }
-        }
-
-        // Si es la vista del mapa, invalidar tamaño (fix para Leaflet)
-        if (viewName === 'mapa' && MapManager.map) {
-            setTimeout(() => {
-                MapManager.map.invalidateSize();
-            }, 100);
-        }
-    },
-
-    /**
-     * Inicializa controles del mapa
-     */
-    initMapControls() {
-        // Botón "Mi Ubicación"
-        const btnMyLocation = document.getElementById('btn-my-location');
-        if (btnMyLocation) {
-            btnMyLocation.addEventListener('click', async () => {
-                try {
-                    const coords = await Geolocation.getCurrentPosition();
-                    MapManager.setUserLocation(coords.lat, coords.lng);
-                } catch (error) {
-                    console.error('Error obteniendo ubicación:', error);
-                }
-            });
-        }
-
-        // Botón "Actualizar"
-        const btnRefresh = document.getElementById('btn-refresh-map');
-        if (btnRefresh) {
-            btnRefresh.addEventListener('click', () => {
-                MapManager.refresh();
-            });
-        }
-
-        // Botón de estadísticas
-        const btnStats = document.getElementById('stats-button');
-        if (btnStats) {
-            btnStats.addEventListener('click', () => this.showStats());
-        }
-    },
-
-    /**
-     * Inicializa la sección de albergues
-     */
-    initAlbergues() {
-        // El botón de agregar albergue ahora abre el modal (manejado en forms.js)
-
-        // Formulario de inventario
-        const formInventario = document.getElementById('form-inventario');
-        if (formInventario) {
-            formInventario.addEventListener('submit', (e) => Admin.registrarInventario(e));
-        }
-    },
-
-    /**
-     * Carga datos iniciales
-     */
-    async loadInitialData() {
-        Utils.showSpinner(true);
-
-        try {
-            // Cargar datos del mapa
+        // Cargar datos iniciales del mapa
+        if (typeof MapManager !== 'undefined') {
             await MapManager.refresh();
-
-            // Cargar albergues
-            await this.loadAlbergues();
-
-        } catch (error) {
-            console.error('Error cargando datos iniciales:', error);
-            Utils.showToast('⚠️ Error al cargar algunos datos', 'error');
-        } finally {
-            Utils.showSpinner(false);
         }
-    },
+
+        // Cargar lista de albergues
+        await loadAlbergues();
+
+        // Ocultar spinner de carga inicial
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+        }
+
+        console.log('✅ Aplicación inicializada');
+    }
+
+    /**
+     * Configura la navegación (menú inferior) (Privado)
+     */
+    function _setupNavigation() {
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                // El comportamiento por defecto del enlace cambiará el hash
+                // y activará handleRoute, así que no necesitamos hacer mucho aquí
+                const viewId = link.getAttribute('href').substring(1);
+                _updateActiveLink(viewId);
+            });
+        });
+    }
+
+    /**
+     * Actualiza el link activo en el menú (Privado)
+     */
+    function _updateActiveLink(viewId) {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + viewId) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    /**
+     * Maneja el enrutamiento simple basado en hash (Privado)
+     */
+    function _handleRoute() {
+        const hash = window.location.hash.substring(1) || 'mapa';
+        _switchView(hash);
+    }
+
+    /**
+     * Cambia la vista visible (Privado)
+     */
+    function _switchView(viewId) {
+        // Ocultar todas las vistas
+        document.querySelectorAll('.view-section').forEach(view => {
+            view.classList.remove('active');
+        });
+
+        // Mostrar vista actual
+        const currentViewEl = document.getElementById(viewId);
+        if (currentViewEl) {
+            currentViewEl.classList.add('active');
+        } else {
+            // Si la vista no existe, volver al mapa
+            window.location.hash = 'mapa';
+            return;
+        }
+
+        currentView = viewId;
+        _updateActiveLink(viewId);
+
+        // Acciones específicas por vista
+        if (viewId === 'mapa') {
+            if (typeof MapManager !== 'undefined') MapManager.invalidateSize();
+        } else if (viewId === 'admin') {
+            // Verificar autenticación
+            if (typeof Auth !== 'undefined' && Auth.isAuthenticated()) {
+                if (typeof Admin !== 'undefined') {
+                    Admin.showDashboard();
+                    Admin.loadDashboardData();
+                }
+                await this.loadAlbergues();
+
+            } catch (error) {
+                console.error('Error cargando datos iniciales:', error);
+                Utils.showToast('⚠️ Error al cargar algunos datos', 'error');
+            } finally {
+                Utils.showSpinner(false);
+            }
+        },
 
     /**
      * Carga y muestra la lista de albergues
      */
     async loadAlbergues() {
-        const container = document.getElementById('albergues-list');
-        if (!container) return;
+            const container = document.getElementById('albergues-list');
+            if (!container) return;
 
-        try {
-            const albergues = await API.getAlbergues();
+            try {
+                const albergues = await API.getAlbergues();
 
-            if (!albergues || albergues.length === 0) {
-                container.innerHTML = '<div class="loading">No hay albergues registrados aún.</div>';
-                return;
+                if (!albergues || albergues.length === 0) {
+                    container.innerHTML = '<div class="loading">No hay albergues registrados aún.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                albergues.forEach(albergue => {
+                    const card = this.createAlbergueCard(albergue);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error('Error cargando albergues:', error);
+                container.innerHTML = '<div class="loading">Error al cargar albergues.</div>';
             }
+        },
 
-            container.innerHTML = '';
+        /**
+         * Crea una tarjeta de albergue
+         */
+        createAlbergueCard(albergue) {
+            const card = document.createElement('div');
+            card.className = 'albergue-card';
 
-            albergues.forEach(albergue => {
-                const card = this.createAlbergueCard(albergue);
-                container.appendChild(card);
-            });
+            const capacidad = albergue.capacidadTotal || 0;
+            const ocupacion = albergue.ocupacionActual || 0;
+            const disponible = capacidad - ocupacion;
+            const estado = disponible > 0 ? 'activo' : 'lleno';
 
-        } catch (error) {
-            console.error('Error cargando albergues:', error);
-            container.innerHTML = '<div class="loading">Error al cargar albergues.</div>';
-        }
-    },
-
-    /**
-     * Crea una tarjeta de albergue
-     */
-    createAlbergueCard(albergue) {
-        const card = document.createElement('div');
-        card.className = 'albergue-card';
-
-        const capacidad = albergue.capacidadTotal || 0;
-        const ocupacion = albergue.ocupacionActual || 0;
-        const disponible = capacidad - ocupacion;
-        const estado = disponible > 0 ? 'activo' : 'lleno';
-
-        card.innerHTML = `
+            card.innerHTML = `
       <div class="albergue-header">
         <h3 class="albergue-name">🏠 ${albergue.nombre}</h3>
         <span class="albergue-status ${estado}">
@@ -233,61 +183,61 @@ const App = {
       ` : ''}
     `;
 
-        return card;
-    },
+            return card;
+        },
 
-    /**
-     * Muestra un albergue en el mapa
-     */
-    showAlbergueOnMap(lat, lng) {
-        window.location.hash = 'mapa';
+        /**
+         * Muestra un albergue en el mapa
+         */
+        showAlbergueOnMap(lat, lng) {
+            window.location.hash = 'mapa';
 
-        setTimeout(() => {
-            if (MapManager.map) {
-                MapManager.map.setView([lat, lng], 16);
-            }
-        }, 200);
-    },
+            setTimeout(() => {
+                if (MapManager.map) {
+                    MapManager.map.setView([lat, lng], 16);
+                }
+            }, 200);
+        },
 
     /**
      * Muestra estadísticas
      */
     async showStats() {
-        try {
-            const stats = await API.getEstadisticas();
+            try {
+                const stats = await API.getEstadisticas();
 
-            let message = '📊 ESTADÍSTICAS\n\n';
-            message += `🆘 Solicitudes: ${stats.totalSolicitudes || 0}\n`;
-            message += `💚 Ofertas: ${stats.totalOfertas || 0}\n`;
-            message += `🏠 Albergues: ${stats.totalAlbergues || 0}\n`;
-            message += `✅ Atendidos: ${stats.atendidos || 0}`;
+                let message = '📊 ESTADÍSTICAS\n\n';
+                message += `🆘 Solicitudes: ${stats.totalSolicitudes || 0}\n`;
+                message += `💚 Ofertas: ${stats.totalOfertas || 0}\n`;
+                message += `🏠 Albergues: ${stats.totalAlbergues || 0}\n`;
+                message += `✅ Atendidos: ${stats.atendidos || 0}`;
 
-            alert(message);
-        } catch (error) {
-            console.error('Error obteniendo estadísticas:', error);
-            Utils.showToast('❌ Error al obtener estadísticas', 'error');
-        }
-    },
-};
+                alert(message);
+            } catch (error) {
+                console.error('Error obteniendo estadísticas:', error);
+                Utils.showToast('❌ Error al obtener estadísticas', 'error');
+            }
+        },
+    };
 
-// Inicializar cuando el DOM esté listo
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => App.init());
-} else {
-    App.init();
-}
+    // Inicializar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => App.init());
+    } else {
+        App.init();
+    }
 
-// ============================================
-// SERVICE WORKER REGISTRATION
-// ============================================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then((registration) => {
-                console.log('✅ Service Worker registrado con scope:', registration.scope);
-            })
-            .catch((error) => {
-                console.error('❌ Falló el registro del Service Worker:', error);
-            });
-    });
-}
+    // ============================================
+    // SERVICE WORKER REGISTRATION
+    // ============================================
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then((registration) => {
+                    console.log('✅ Service Worker registrado con scope:', registration.scope);
+                })
+                .catch((error) => {
+                    console.error('❌ Falló el registro del Service Worker:', error);
+                });
+        });
+    }
