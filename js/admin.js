@@ -122,10 +122,10 @@ var Admin = (function () {
                 albergues: alberguesPendientes ? alberguesPendientes.length : 0
             });
 
-            // Filtrado del lado del cliente (Security Shield)
-            if (solicitudesPendientes) solicitudesPendientes = solicitudesPendientes.filter(s => s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion);
-            if (ofertasPendientes) ofertasPendientes = ofertasPendientes.filter(o => o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion);
-            if (alberguesPendientes) alberguesPendientes = alberguesPendientes.filter(a => a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion);
+            // Filtrado Permisivo
+            if (solicitudesPendientes) solicitudesPendientes = solicitudesPendientes.filter(s => _isPending(s.estadoAprobacion));
+            if (ofertasPendientes) ofertasPendientes = ofertasPendientes.filter(o => _isPending(o.estadoAprobacion));
+            if (alberguesPendientes) alberguesPendientes = alberguesPendientes.filter(a => _isPending(a.estadoAprobacion));
 
             console.log('🔍 DEBUG Dashboard Filtered Counts:', {
                 solicitudes: solicitudesPendientes ? solicitudesPendientes.length : 0,
@@ -176,6 +176,13 @@ var Admin = (function () {
         }
     }
 
+    // Helper para normalizar estado
+    function _isPending(status) {
+        if (!status) return true; // Si no tiene estado, es pendiente
+        const s = String(status).toLowerCase().trim();
+        return s !== 'activo' && s !== 'rechazado';
+    }
+
     /**
      * Carga solicitudes pendientes (Privado)
      */
@@ -183,11 +190,11 @@ var Admin = (function () {
         let solicitudes = await API.getSolicitudesPendientes();
         console.log('🔍 DEBUG Solicitudes Raw:', JSON.stringify(solicitudes));
 
-        // Filtrado del lado del cliente por seguridad (si el backend devuelve aprobadas)
+        // Filtrado Permisivo (Muestra todo lo que NO sea explícitamente aprobado/rechazado)
         if (solicitudes) {
             solicitudes = solicitudes.filter(s => {
-                const keep = s.estadoAprobacion === 'pendiente_aprobacion' || !s.estadoAprobacion;
-                if (!keep) console.log(`🗑️ Filtrando solicitud procesada: ${s.nombre} (${s.estadoAprobacion})`);
+                const keep = _isPending(s.estadoAprobacion);
+                if (!keep) console.log(`🗑️ Ocultando solicitud (Estado: ${s.estadoAprobacion})`);
                 return keep;
             });
         }
@@ -232,11 +239,11 @@ var Admin = (function () {
         let ofertas = await API.getOfertasPendientes();
         console.log('🔍 DEBUG Ofertas Raw:', JSON.stringify(ofertas));
 
-        // Filtrado del lado del cliente
+        // Filtrado Permisivo
         if (ofertas) {
             ofertas = ofertas.filter(o => {
-                const keep = o.estadoAprobacion === 'pendiente_aprobacion' || !o.estadoAprobacion;
-                if (!keep) console.log(`🗑️ Filtrando oferta procesada: ${o.nombre} (${o.estadoAprobacion})`);
+                const keep = _isPending(o.estadoAprobacion);
+                if (!keep) console.log(`🗑️ Ocultando oferta (Estado: ${o.estadoAprobacion})`);
                 return keep;
             });
         }
@@ -280,11 +287,11 @@ var Admin = (function () {
         let albergues = await API.getAlberguesPendientes();
         console.log('🔍 DEBUG Albergues Raw:', JSON.stringify(albergues));
 
-        // Filtrado del lado del cliente
+        // Filtrado Permisivo
         if (albergues) {
             albergues = albergues.filter(a => {
-                const keep = a.estadoAprobacion === 'pendiente_aprobacion' || !a.estadoAprobacion;
-                if (!keep) console.log(`🗑️ Filtrando albergue procesado: ${a.nombre} (${a.estadoAprobacion})`);
+                const keep = _isPending(a.estadoAprobacion);
+                if (!keep) console.log(`🗑️ Ocultando albergue (Estado: ${a.estadoAprobacion})`);
                 return keep;
             });
         }
