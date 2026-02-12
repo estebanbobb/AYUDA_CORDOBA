@@ -13,6 +13,46 @@ function getSpreadsheet() {
   return SpreadsheetApp.openById(SHEET_ID);
 }
 
+// ============================================
+// RESPUESTAS ESTANDARIZADAS (Socorro Pattern)
+// ============================================
+
+/**
+ * Genera una respuesta exitosa estandarizada
+ * @param {Object} data - Datos a devolver
+ * @param {String} message - Mensaje opcional
+ * @returns {Object} Respuesta estandarizada
+ */
+function successResponse(data, message) {
+  return {
+    success: true,
+    data: data || {},
+    message: message || '',
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Genera una respuesta de error estandarizada
+ * @param {String} error - Mensaje de error
+ * @param {String} code - Código de error
+ * @returns {Object} Respuesta estandarizada
+ */
+function errorResponse(error, code) {
+  const errorCode = code || 'UNKNOWN_ERROR';
+  Logger.log('❌ Error [' + errorCode + ']: ' + error);
+  return {
+    success: false,
+    error: error,
+    code: errorCode,
+    timestamp: new Date().toISOString()
+  };
+}
+
+
+
+
+
 /**
  * Maneja peticiones GET
  * Soporta JSONP para permitir lectura cross-origin
@@ -58,14 +98,11 @@ function doGet(e) {
       case 'getInventario':
         result = getInventario(e.parameter.albergueId);
         break;
-      case 'getTransportes':
-        result = getTransportes();
-        break;
       case 'getTransportesPendientes':
         result = getTransportesPendientes();
         break;
       default:
-        result = { error: 'Acción no válida' };
+        result = errorResponse('Acción no válida: ' + action, 'INVALID_ACTION');
     }
     
     // Si hay callback (JSONP), devolver JavaScript
@@ -82,7 +119,7 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
-    const errorResult = { error: error.toString() };
+    const errorResult = errorResponse(error.toString(), 'GET_ERROR');
     
     // Si hay callback (JSONP), devolver error como JavaScript
     if (callback) {
@@ -186,10 +223,13 @@ function doPost(e) {
         result = rechazarTransporte(id);
         break;
       case 'actualizarEstadoTransporte':
-        result = actualizarEstadoTransporte(id, estado);
+        result = actualizarEstadoTransporte(dataParam.id, dataParam.estado);
+        break;
+      case 'registrarFeedback':
+        result = registrarFeedback(dataParam.data || dataParam);
         break;
       default:
-        result = { error: 'Acción no válida' };
+        result = errorResponse('Acción no válida: ' + action, 'INVALID_ACTION');
     }
     
     return ContentService
@@ -197,9 +237,8 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
-    Logger.log('Error en doPost: ' + error);
     return ContentService
-      .createTextOutput(JSON.stringify({ error: error.toString() }))
+      .createTextOutput(JSON.stringify(errorResponse(error.toString(), 'POST_ERROR')))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -245,10 +284,9 @@ function getSolicitudes() {
       });
     }
     
-    return solicitudes;
+    return successResponse(solicitudes);
   } catch (error) {
-    Logger.log('Error en getSolicitudes: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_SOLICITUDES_ERROR');
   }
 }
 
@@ -293,10 +331,9 @@ function getSolicitudesPendientes() {
       });
     }
     
-    return solicitudes;
+    return successResponse(solicitudes);
   } catch (error) {
-    Logger.log('Error en getSolicitudesPendientes: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_SOLICITUDES_PENDIENTES_ERROR');
   }
 }
 
@@ -339,10 +376,9 @@ function getOfertas() {
       });
     }
     
-    return ofertas;
+    return successResponse(ofertas);
   } catch (error) {
-    Logger.log('Error en getOfertas: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_OFERTAS_ERROR');
   }
 }
 
@@ -385,10 +421,9 @@ function getOfertasPendientes() {
       });
     }
     
-    return ofertas;
+    return successResponse(ofertas);
   } catch (error) {
-    Logger.log('Error en getOfertasPendientes: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_OFERTAS_PENDIENTES_ERROR');
   }
 }
 
@@ -431,10 +466,9 @@ function getAlbergues() {
       });
     }
     
-    return albergues;
+    return successResponse(albergues);
   } catch (error) {
-    Logger.log('Error en getAlbergues: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_ALBERGUES_ERROR');
   }
 }
 
@@ -472,10 +506,9 @@ function crearSolicitud(datos) {
       'pendiente_aprobacion' // Nueva columna
     ]);
     
-    return { success: true, id: datos.id };
+    return successResponse({ id: datos.id }, 'Solicitud creada correctamente');
   } catch (error) {
-    Logger.log('Error en crearSolicitud: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'CREATE_SOLICITUD_ERROR');
   }
 }
 
@@ -511,10 +544,9 @@ function crearOferta(datos) {
       'pendiente_aprobacion' // Nueva columna
     ]);
     
-    return { success: true, id: datos.id };
+    return successResponse({ id: datos.id }, 'Oferta creada correctamente');
   } catch (error) {
-    Logger.log('Error en crearOferta: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'CREATE_OFERTA_ERROR');
   }
 }
 
@@ -550,42 +582,16 @@ function gestionarAlbergue(datos) {
       'pendiente_aprobacion' // Nueva columna
     ]);
     
-    return { success: true, id: datos.id };
+    return successResponse({ id: datos.id }, 'Albergue registrado correctamente');
   } catch (error) {
-    Logger.log('Error en gestionarAlbergue: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'GESTIONAR_ALBERGUE_ERROR');
   }
 }
 
 /**
  * Obtiene estadísticas
  */
-function getEstadisticas() {
-  try {
-    const solicitudes = getSolicitudes();
-    const ofertas = getOfertas();
-    const albergues = getAlbergues();
-    
-    const atendidos = solicitudes.filter(s => s.estado === 'atendido').length;
-    
-    return {
-      totalSolicitudes: solicitudes.length,
-      totalOfertas: ofertas.length,
-      totalAlbergues: albergues.length,
-      atendidos: atendidos,
-      pendientes: solicitudes.length - atendidos
-    };
-  } catch (error) {
-    Logger.log('Error en getEstadisticas: ' + error);
-    return {
-      totalSolicitudes: 0,
-      totalOfertas: 0,
-      totalAlbergues: 0,
-      atendidos: 0,
-      pendientes: 0
-    };
-  }
-}
+
 
 /**
  * Inicializa las hojas necesarias
@@ -711,10 +717,9 @@ function getAlberguesPendientes() {
       });
     }
     
-    return albergues;
+    return successResponse(albergues);
   } catch (error) {
-    Logger.log('Error en getAlberguesPendientes: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_ALBERGUES_PENDIENTES_ERROR');
   }
 }
 
@@ -735,14 +740,13 @@ function aprobarSolicitud(id) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
         sheet.getRange(i + 1, 13).setValue('activo');
-        return { success: true, message: 'Solicitud aprobada' };
+        return successResponse({ id: id }, 'Solicitud aprobada');
       }
     }
     
-    return { success: false, error: 'Solicitud no encontrada' };
+    return errorResponse('Solicitud no encontrada', 'NOT_FOUND');
   } catch (error) {
-    Logger.log('Error en aprobarSolicitud: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'APPROVE_SOLICITUD_ERROR');
   }
 }
 
@@ -763,14 +767,13 @@ function rechazarSolicitud(id) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
         sheet.getRange(i + 1, 13).setValue('rechazado');
-        return { success: true, message: 'Solicitud rechazada' };
+        return successResponse({ id: id }, 'Solicitud rechazada');
       }
     }
     
-    return { success: false, error: 'Solicitud no encontrada' };
+    return errorResponse('Solicitud no encontrada', 'NOT_FOUND');
   } catch (error) {
-    Logger.log('Error en rechazarSolicitud: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'REJECT_SOLICITUD_ERROR');
   }
 }
 
@@ -791,14 +794,13 @@ function aprobarOferta(id) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
         sheet.getRange(i + 1, 11).setValue('activo');
-        return { success: true, message: 'Oferta aprobada' };
+        return successResponse({ id: id }, 'Oferta aprobada');
       }
     }
     
-    return { success: false, error: 'Oferta no encontrada' };
+    return errorResponse('Oferta no encontrada', 'NOT_FOUND');
   } catch (error) {
-    Logger.log('Error en aprobarOferta: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'APPROVE_OFERTA_ERROR');
   }
 }
 
@@ -819,14 +821,13 @@ function rechazarOferta(id) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === id) {
         sheet.getRange(i + 1, 11).setValue('rechazado');
-        return { success: true, message: 'Oferta rechazada' };
+        return successResponse({ id: id }, 'Oferta rechazada');
       }
     }
     
-    return { success: false, error: 'Oferta no encontrada' };
+    return errorResponse('Oferta no encontrada', 'NOT_FOUND');
   } catch (error) {
-    Logger.log('Error en rechazarOferta: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'REJECT_OFERTA_ERROR');
   }
 }
 
@@ -868,15 +869,13 @@ function aprobarAlbergue(data) {
         const valorGuardado = sheet.getRange(i + 1, 11).getValue();
         Logger.log('✅ Valor guardado: ' + valorGuardado);
         
-        return { success: true, message: 'Albergue aprobado' };
+        return successResponse({ id: sheetId }, 'Albergue aprobado');
       }
     }
     
-    Logger.log('❌ NO ENCONTRADO - ID no coincide con ninguna fila');
-    return { success: false, error: 'Albergue no encontrado' };
+    return errorResponse('Albergue no encontrada', 'NOT_FOUND');
   } catch (error) {
-    Logger.log('❌ Error en aprobarAlbergue: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'APPROVE_ALBERGUE_ERROR');
   }
 }
 
@@ -912,10 +911,9 @@ function registrarInventario(datos) {
       datos.registradoPor || 'Admin'
     ]);
     
-    return { success: true, id: id };
+    return successResponse({ id: id }, 'Inventario registrado correctamente');
   } catch (error) {
-    Logger.log('Error en registrarInventario: ' + error);
-    return { success: false, error: error.toString() };
+    return errorResponse(error.toString(), 'REGISTER_INVENTARIO_ERROR');
   }
 }
 
@@ -957,10 +955,9 @@ function getInventario(albergueId) {
     // Ordenar por fecha descendente (más reciente primero)
     inventario.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     
-    return inventario;
+    return successResponse(inventario);
   } catch (error) {
-    Logger.log('Error en getInventario: ' + error);
-    return [];
+    return errorResponse(error.toString(), 'GET_INVENTARIO_ERROR');
   }
 }
 
@@ -1001,11 +998,7 @@ function registrarTransporte(data) {
   
   sheet.appendRow(row);
   
-  return { 
-    success: true, 
-    message: 'Transporte registrado correctamente',
-    id: row[0]
-  };
+  return successResponse({ id: row[0] }, 'Transporte registrado correctamente');
 }
 
 /**
@@ -1049,7 +1042,7 @@ function getTransportes() {
     }
   }
   
-  return transportes;
+  return successResponse(transportes);
 }
 
 /**
@@ -1092,7 +1085,7 @@ function getTransportesPendientes() {
     }
   }
   
-  return transportes;
+  return successResponse(transportes);
 }
 
 /**
@@ -1111,11 +1104,11 @@ function aprobarTransporte(id) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.getRange(i + 1, 16).setValue('activo'); // EstadoAprobacion
-      return { success: true, message: 'Transporte aprobado' };
+      return successResponse({ id: id }, 'Transporte aprobado');
     }
   }
   
-  return { success: false, error: 'Transporte no encontrado' };
+  return errorResponse('Transporte no encontrado', 'NOT_FOUND');
 }
 
 /**
@@ -1134,11 +1127,11 @@ function rechazarTransporte(id) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.getRange(i + 1, 16).setValue('rechazado'); // EstadoAprobacion
-      return { success: true, message: 'Transporte rechazado' };
+      return successResponse({ id: id }, 'Transporte rechazado');
     }
   }
   
-  return { success: false, error: 'Transporte no encontrado' };
+  return errorResponse('Transporte no encontrado', 'NOT_FOUND');
 }
 
 /**
@@ -1157,9 +1150,53 @@ function actualizarEstadoTransporte(id, nuevoEstado) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.getRange(i + 1, 15).setValue(nuevoEstado); // Estado
-      return { success: true, message: 'Estado actualizado' };
+      return successResponse({ id: id, nuevoEstado: nuevoEstado }, 'Estado actualizado');
     }
   }
   
-  return { success: false, error: 'Transporte no encontrado' };
+  return errorResponse('Transporte no encontrado', 'NOT_FOUND');
+}
+
+/**
+ * Registra feedback de usuarios
+ */
+function registrarFeedback(datos) {
+  try {
+    const ss = getSpreadsheet();
+    let sheet = ss.getSheetByName('Feedback');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('Feedback');
+      sheet.appendRow(['ID', 'Timestamp', 'Mensaje', 'Email', 'UserAgent']);
+      sheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#E2E8F0');
+    }
+    
+    const id = 'FB-' + Date.now();
+    const timestamp = new Date().toISOString();
+    
+    sheet.appendRow([
+      id,
+      timestamp,
+      datos.feedback || datos.mensaje || '',
+      datos.email || '',
+      datos.user_agent || datos.userAgent || ''
+    ]);
+    
+    return successResponse({ id: id }, 'Feedback recibido. ¡Gracias!');
+  } catch (error) {
+    return errorResponse(error.toString(), 'FEEDBACK_ERROR');
+  }
+}
+
+/**
+ * Helper privado para leer datos crudos de una hoja
+ */
+function _getDataFromSheet(sheetName) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  
+  const data = sheet.getDataRange().getValues();
+  // Remover header y filtrar filas vacías
+  return data.slice(1).filter(row => row[0]);
 }
